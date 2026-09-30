@@ -9,6 +9,7 @@
     Public Sub New()
         Me.Text = "Level 1 — River Crossing"
         Me.Size = New Size(800, 600)
+        Me.MinimumSize = New Size(600, 500)
         Me.StartPosition = FormStartPosition.CenterParent
         Me.BackColor = Color.FromArgb(135, 206, 235) ' Light sky blue as placeholder
 
@@ -33,7 +34,6 @@
         ' Button size and layout
         Dim buttonWidth As Integer = 200
         Dim buttonHeight As Integer = 50
-        Dim centerX As Integer = (centerPanel.Width - buttonWidth) \ 2
 
         ' START button
         startButton = New Button() With {
@@ -42,8 +42,7 @@
             .FlatStyle = FlatStyle.Flat,
             .BackColor = Color.FromArgb(34, 177, 76),
             .ForeColor = Color.White,
-            .Size = New Size(buttonWidth, buttonHeight),
-            .Location = New Point(centerX, 80)
+            .Size = New Size(buttonWidth, buttonHeight)
         }
         startButton.FlatAppearance.BorderSize = 0
         AddHandler startButton.Click, AddressOf StartButton_Click
@@ -56,8 +55,7 @@
             .FlatStyle = FlatStyle.Flat,
             .BackColor = Color.FromArgb(52, 152, 219),
             .ForeColor = Color.White,
-            .Size = New Size(buttonWidth, buttonHeight),
-            .Location = New Point(centerX, 150)
+            .Size = New Size(buttonWidth, buttonHeight)
         }
         settingsButton.FlatAppearance.BorderSize = 0
         AddHandler settingsButton.Click, AddressOf SettingsButton_Click
@@ -70,8 +68,7 @@
             .FlatStyle = FlatStyle.Flat,
             .BackColor = Color.FromArgb(155, 89, 182),
             .ForeColor = Color.White,
-            .Size = New Size(buttonWidth, buttonHeight),
-            .Location = New Point(centerX, 220)
+            .Size = New Size(buttonWidth, buttonHeight)
         }
         nextGameButton.FlatAppearance.BorderSize = 0
         AddHandler nextGameButton.Click, AddressOf NextGameButton_Click
@@ -84,34 +81,42 @@
             .FlatStyle = FlatStyle.Flat,
             .BackColor = Color.FromArgb(192, 57, 43),
             .ForeColor = Color.White,
-            .Size = New Size(buttonWidth, buttonHeight),
-            .Location = New Point(centerX, 290)
+            .Size = New Size(buttonWidth, buttonHeight)
         }
         exitButton.FlatAppearance.BorderSize = 0
         AddHandler exitButton.Click, AddressOf ExitButton_Click
         centerPanel.Controls.Add(exitButton)
+
+        ' Position buttons dynamically on Resize
+        AddHandler centerPanel.Resize, Sub(s, e)
+                                           Dim centerX As Integer = (centerPanel.Width - buttonWidth) \ 2
+                                           startButton.Location = New Point(centerX, 60)
+                                           settingsButton.Location = New Point(centerX, 130)
+                                           nextGameButton.Location = New Point(centerX, 200)
+                                           exitButton.Location = New Point(centerX, 270)
+                                       End Sub
     End Sub
 
     Private Sub StartButton_Click(sender As Object, e As EventArgs)
-        ' TODO: Play button click sound (will implement in Stage 6)
-        ' TODO: Open Level1GameplayForm and hide this menu
-        MessageBox.Show("Gameplay will open here.", "Start Game", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        Try
+            Dim gameplayForm As New Level1GameplayForm()
+            gameplayForm.ShowDialog(Me)
+        Catch ex As Exception
+            MessageBox.Show("Gameplay form could not be opened." & vbCrLf & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
     End Sub
 
     Private Sub SettingsButton_Click(sender As Object, e As EventArgs)
-        ' TODO: Play button click sound
         Dim settingsForm As New Level1SettingsForm()
         settingsForm.ShowDialog(Me)
     End Sub
 
     Private Sub NextGameButton_Click(sender As Object, e As EventArgs)
-        ' TODO: Play button click sound
         Dim level2Form As New Level2PlaceholderForm()
         level2Form.ShowDialog(Me)
     End Sub
 
     Private Sub ExitButton_Click(sender As Object, e As EventArgs)
-        ' TODO: Play button click sound
         Me.DialogResult = DialogResult.Cancel
         Me.Close()
     End Sub
