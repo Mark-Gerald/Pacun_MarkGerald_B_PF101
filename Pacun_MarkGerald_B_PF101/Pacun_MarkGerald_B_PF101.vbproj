@@ -1,0 +1,745 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{BBA8D342-2F9F-4BFA-800F-B04798173F31}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <StartupObject>Pacun_MarkGerald_B_PF101.My.MyApplication</StartupObject>
+    <RootNamespace>Pacun_MarkGerald_B_PF101</RootNamespace>
+    <AssemblyName>Pacun_MarkGerald_B_PF101</AssemblyName>
+    <FileAlignment>512</FileAlignment>
+    <MyType>WindowsForms</MyType>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DocumentationFile>Pacun_MarkGerald_B_PF101.xml</DocumentationFile>
+    <NoWarn>42016,41999,42017,42018,42019,42032,42036,42020,42021,42022</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <DefineDebug>false</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DocumentationFile>Pacun_MarkGerald_B_PF101.xml</DocumentationFile>
+    <NoWarn>42016,41999,42017,42018,42019,42032,42036,42020,42021,42022</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionExplicit>On</OptionExplicit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionCompare>Binary</OptionCompare>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionStrict>Off</OptionStrict>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionInfer>On</OptionInfer>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+  <ItemGroup>
+    <Import Include="Microsoft.VisualBasic" />
+    <Import Include="System" />
+    <Import Include="System.Collections" />
+    <Import Include="System.Collections.Generic" />
+    <Import Include="System.Data" />
+    <Import Include="System.Drawing" />
+    <Import Include="System.Diagnostics" />
+    <Import Include="System.Windows.Forms" />
+    <Import Include="System.Linq" />
+    <Import Include="System.Xml.Linq" />
+    <Import Include="System.Threading.Tasks" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AnimalSystem.Designer.vb">
+      <DependentUpon>AnimalSystem.vb</DependentUpon>
+    </Compile>
+    <Compile Include="AnimalSystem.vb" />
+    <Compile Include="BankAccount.Designer.vb">
+      <DependentUpon>BankAccount.vb</DependentUpon>
+    </Compile>
+    <Compile Include="BankAccount.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form1.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form1.Designer.vb">
+      <DependentUpon>Form1.vb</DependentUpon>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GameSettings.Designer.vb">
+      <DependentUpon>GameSettings.vb</DependentUpon>
+    </Compile>
+    <Compile Include="GameSettings.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GradeCalculator.Designer.vb">
+      <DependentUpon>GradeCalculator.vb</DependentUpon>
+    </Compile>
+    <Compile Include="GradeCalculator.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Level1GameplayForm.Designer.vb">
+      <DependentUpon>Level1GameplayForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Level1GameplayForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Level1MenuForm.Designer.vb">
+      <DependentUpon>Level1MenuForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Level1MenuForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Level1SettingsForm.Designer.vb">
+      <DependentUpon>Level1SettingsForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Level1SettingsForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Level2PlaceholderForm.Designer.vb">
+      <DependentUpon>Level2PlaceholderForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Level2PlaceholderForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="My Project\AssemblyInfo.vb" />
+    <Compile Include="My Project\Application.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Application.myapp</DependentUpon>
+    </Compile>
+    <Compile Include="My Project\Resources.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="My Project\Settings.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="OrientationForm.Designer.vb">
+      <DependentUpon>OrientationForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="OrientationForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Student.Designer.vb">
+      <DependentUpon>Student.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Student.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="VehicleSystem.Designer.vb">
+      <DependentUpon>VehicleSystem.vb</DependentUpon>
+    </Compile>
+    <Compile Include="VehicleSystem.vb" />
+    <Compile Include="Week2ClassesAndObjectsForm.Designer.vb">
+      <DependentUpon>Week2ClassesAndObjectsForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week2ClassesAndObjectsForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Week2Form.Designer.vb">
+      <DependentUpon>Week2Form.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week2Form.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Week2InheritanceForm.Designer.vb">
+      <DependentUpon>Week2InheritanceForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week2InheritanceForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Week2PolymorphismForm.Designer.vb">
+      <DependentUpon>Week2PolymorphismForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week2PolymorphismForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Week3Form.Designer.vb">
+      <DependentUpon>Week3Form.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week3Form.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Week4Form.Designer.vb">
+      <DependentUpon>Week4Form.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week4Form.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Week5Form.Designer.vb">
+      <DependentUpon>Week5Form.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week5Form.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Week6Form.Designer.vb">
+      <DependentUpon>Week6Form.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week6Form.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Week6TimerForm.Designer.vb">
+      <DependentUpon>Week6TimerForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week6TimerForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Week7Form.Designer.vb">
+      <DependentUpon>Week7Form.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week7Form.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Week8Form.Designer.vb">
+      <DependentUpon>Week8Form.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Week8Form.vb">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Form1.resx">
+      <DependentUpon>Form1.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="My Project\Resources.resx">
+      <Generator>VbMyResourcesResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.vb</LastGenOutput>
+      <CustomToolNamespace>My.Resources</CustomToolNamespace>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="My Project\Application.myapp">
+      <Generator>MyApplicationCodeGenerator</Generator>
+      <LastGenOutput>Application.Designer.vb</LastGenOutput>
+    </None>
+    <None Include="My Project\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <CustomToolNamespace>My</CustomToolNamespace>
+      <LastGenOutput>Settings.Designer.vb</LastGenOutput>
+    </None>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Assets\Audio\Music\Wet Hands.mp3" />
+    <Content Include="Assets\Audio\SFX\Ambience_Music.mp3" />
+    <Content Include="Assets\Audio\SFX\Button_Plate_Click.mp3" />
+    <Content Include="Assets\Audio\SFX\Canoe_Paddle_Sound_Effect.mp3" />
+    <Content Include="Assets\Audio\SFX\Failure_in_the_game_Sound_effect.mp3" />
+    <Content Include="Assets\Audio\SFX\Nope_Invalid_Move.mp3" />
+    <Content Include="Assets\Audio\SFX\Victory_Jingle.mp3" />
+    <Content Include="Assets\Audio\SFX\Walking_On_Wood_Sound_Effect.mp3" />
+    <Content Include="Assets\Character\character-Sheet.png" />
+    <Content Include="Assets\enemies\enemy_fly-Sheet.png" />
+    <Content Include="Assets\enemies\ground_enemy-Sheet.png" />
+    <Content Include="Assets\enviroment\carrot.png" />
+    <Content Include="Assets\enviroment\coin-Sheet.png" />
+    <Content Include="Assets\enviroment\glow_carrot.png" />
+    <Content Include="Assets\enviroment\life.png" />
+    <Content Include="Assets\enviroment\sky.png" />
+    <Content Include="Assets\enviroment\sky_decor.png" />
+    <Content Include="Assets\tilesets\Blocks.png" />
+    <Content Include="Assets\tilesets\Grass_rocks.png" />
+    <Content Include="Assets\tilesets\Grass_rocks_2.png" />
+    <Content Include="Assets\tilesets\platforms.png" />
+    <Content Include="Assets\tilesets\Rocks.png" />
+    <Content Include="Assets\tilesets\rocks_2.png" />
+    <Content Include="Assets\tilesets\water-Sheet.png" />
+    <Content Include="LessonContent\Lesson01_Orientation\Presentation\orientation_page_01.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Presentation\orientation_page_02.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Presentation\orientation_page_03.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Presentation\orientation_page_04.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Presentation\orientation_page_05.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Presentation\orientation_page_06.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Presentation\orientation_page_07.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Presentation\orientation_page_08.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Presentation\orientation_page_09.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Syllabus\page_01.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Syllabus\page_02.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Syllabus\page_03.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Syllabus\page_04.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Syllabus\page_05.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Syllabus\page_06.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Syllabus\page_07.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Syllabus\page_08.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Lesson01_Orientation\Syllabus\page_09.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week02_IntroToOOP\Slides\week2_slide_01.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week02_IntroToOOP\Slides\week2_slide_02.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week02_IntroToOOP\Slides\week2_slide_03.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week02_IntroToOOP\Slides\week2_slide_04.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week02_IntroToOOP\Slides\week2_slide_05.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week02_IntroToOOP\Slides\week2_slide_06.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week02_IntroToOOP\Slides\week2_slide_07.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week02_IntroToOOP\Slides\week2_slide_08.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week02_IntroToOOP\Slides\week2_slide_09.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week03_GettingStarted\Slides\Week3_Slide_01.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week03_GettingStarted\Slides\Week3_Slide_02.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week03_GettingStarted\Slides\Week3_Slide_03.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week03_GettingStarted\Slides\Week3_Slide_04.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week03_GettingStarted\Slides\Week3_Slide_05.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week03_GettingStarted\Slides\Week3_Slide_06.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week03_GettingStarted\Slides\Week3_Slide_07.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week04_PlanningApplications\Slides\Week4_Slide_01.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week04_PlanningApplications\Slides\Week4_Slide_02.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week04_PlanningApplications\Slides\Week4_Slide_03.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week04_PlanningApplications\Slides\Week4_Slide_04.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week04_PlanningApplications\Slides\Week4_Slide_05.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week04_PlanningApplications\Slides\Week4_Slide_06.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week04_PlanningApplications\Slides\Week4_Slide_07.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week04_PlanningApplications\Slides\Week4_Slide_08.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_01.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_02.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_03.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_04.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_05.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_06.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_07.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_08.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_09.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_10.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_11.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_12.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_13.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_14.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_15.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_16.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_17.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_18.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_19.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_20.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_21.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_22.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_23.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_24.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_25.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_26.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week05_DataHandling\Slides\Week5_Slide_27.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_01.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_02.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_03.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_04.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_05.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_06.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_07.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_08.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_09.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_10.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_11.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_12.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_13.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_14.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_15.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_16.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_17.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_18.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_19.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_20.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_21.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_22.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_23.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_24.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_25.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_26.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_27.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_28.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week06_SelectionRepetition\Slides\Week6_Slide_29.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_01.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_02.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_03.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_04.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_05.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_06.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_07.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_08.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_09.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_10.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_11.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_12.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_13.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_14.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_15.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_16.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_17.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_18.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_19.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_20.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week07_Arrays\Slides\week07_slide_21.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_01.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_02.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_03.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_04.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_05.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_06.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_07.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_08.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_09.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_10.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_11.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_12.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_13.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_14.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_15.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_16.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_17.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_18.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_19.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_20.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_21.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_22.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_23.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_24.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_25.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_26.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_27.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_28.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_29.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_30.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_31.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_32.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_33.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_34.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_35.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_36.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LessonContent\Week08_WorkingWithControlsAndProperties\Slides\week08_slide_37.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
+</Project>
