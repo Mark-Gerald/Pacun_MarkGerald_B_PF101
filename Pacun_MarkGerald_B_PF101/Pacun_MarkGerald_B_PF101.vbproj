@@ -293,7 +293,13 @@
     <Content Include="Assets\Audio\SFX\Nope_Invalid_Move.mp3" />
     <Content Include="Assets\Audio\SFX\Victory_Jingle.mp3" />
     <Content Include="Assets\Audio\SFX\Walking_On_Wood_Sound_Effect.mp3" />
-    <Content Include="Assets\Character\character-Sheet.png">
+    <Content Include="Assets\Character\Farmer-Idle.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Character\Farmer-Jump.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Character\Farmer-Walk.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\Character\Knight-Idle.png">
@@ -339,6 +345,30 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\enviroment\Tool_Hammer.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Topdown_RPG_32x32_Bushes_1_1.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Topdown_RPG_32x32_Ground_Tileset_1_2.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Topdown_RPG_32x32_Mushrooms.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Topdown_RPG_32x32_Nature_Details.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Topdown_RPG_32x32_Rocks_1_2.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Topdown_RPG_32x32_Trees_1_2.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Topdown_RPG_32x32_Tree_Stumps_and_Logs_1_2.PNG">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Topdown_RPG_32x32_WaterTileset.PNG">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\enviroment\walls.png">

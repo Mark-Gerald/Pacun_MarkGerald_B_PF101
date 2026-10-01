@@ -1,35 +1,39 @@
-﻿''' <summary>
-''' The Jump Knight window. Owns ONE timer (created once, so Retry never creates another loop),
-''' reads the keyboard, steps the engine at a fixed 1/60 s, and shows pause / game-over buttons.
-''' </summary>
-Public Class JumpKnightGameForm
+﻿Public Class JumpKnightGameForm
     Inherits Form
 
-    ' ---- Sound hooks ----
-    ' Leave a path empty ("") for silence. When you add a sound file to the shared Assets
-    ' folder, put its path RELATIVE to Assets here (same style as "Audio\SFX\xxx.mp3").
+    ' ---- Sound hooks: leave "" for silence, or put a path RELATIVE to Assets ----
     Private Const SfxJump As String = ""
     Private Const SfxSpring As String = ""
     Private Const SfxMeat As String = ""
     Private Const SfxDoubleJump As String = ""
     Private Const SfxWoodBreak As String = ""
+    Private Const SfxAttack As String = ""
+    Private Const SfxBatHit As String = ""
     Private Const SfxGameOver As String = ""
     Private Const MusicTrack As String = ""
 
     Private Const StepSeconds As Single = 1.0F / 60.0F
-    Private Const MaxFrameTime As Single = 0.1F      ' a long freeze never makes the knight teleport
+    Private Const MaxFrameTime As Single = 0.1F
+    Private Const CountdownStepMs As Integer = 700
 
     Private ReadOnly engine As JumpKnightEngine
     Private ReadOnly assets As JumpKnightAssets
     Private ReadOnly renderPanel As JumpKnightPanel
     Private ReadOnly gameTimer As System.Windows.Forms.Timer
+    Private ReadOnly countdownTimer As System.Windows.Forms.Timer
     Private ReadOnly clock As New System.Diagnostics.Stopwatch()
     Private accumulator As Single
 
     Private leftHeld As Boolean
     Private rightHeld As Boolean
     Private jumpHeld As Boolean
+    Private attackHeld As Boolean
+    Private pauseKeyHeld As Boolean
+
+    ' paused = the game is frozen (pause screen OR resume countdown).
     Private paused As Boolean
+    Private countingDown As Boolean
+    Private countdownStep As Integer
 
     Private retryButton As PixelButton
     Private resumeButton As PixelButton
@@ -56,11 +60,18 @@ Public Class JumpKnightGameForm
         gameTimer = New System.Windows.Forms.Timer() With {.Interval = 15}
         AddHandler gameTimer.Tick, AddressOf GameTimer_Tick
 
+        countdownTimer = New System.Windows.Forms.Timer() With {.Interval = CountdownStepMs}
+        AddHandler countdownTimer.Tick, AddressOf CountdownTimer_Tick
+
+        AddHandler renderPanel.PauseClicked, AddressOf RenderPanel_PauseClicked
+
         AddHandler engine.Bounced, AddressOf Engine_Bounced
         AddHandler engine.SpringUsed, AddressOf Engine_SpringUsed
         AddHandler engine.MeatCollected, AddressOf Engine_MeatCollected
         AddHandler engine.DoubleJumped, AddressOf Engine_DoubleJumped
         AddHandler engine.WoodBroke, AddressOf Engine_WoodBroke
+        AddHandler engine.Attacked, AddressOf Engine_Attacked
+        AddHandler engine.BatHit, AddressOf Engine_BatHit
         AddHandler engine.GameEnded, AddressOf Engine_GameEnded
 
         AddHandler Me.KeyDown, AddressOf Form_KeyDown
@@ -118,7 +129,6 @@ Public Class JumpKnightGameForm
         If rightHeld Then moveDir += 1
         If leftHeld Then moveDir -= 1
 
-        ' Fixed time step: movement and scoring behave the same at any frame rate.
         Do While accumulator >= StepSeconds
             engine.Update(StepSeconds, moveDir)
             accumulator -= StepSeconds
@@ -129,22 +139,29 @@ Public Class JumpKnightGameForm
 
     ' ===================== Keyboard =====================
 
-    ' Arrow keys and Escape are handled here so a button/control can never steal them.
+    ' Arrow keys, Escape and P are handled here so no control can steal them.
     Protected Overrides Function ProcessCmdKey(ByRef msg As Message, keyData As Keys) As Boolean
         Select Case keyData
             Case Keys.Left
-                leftHeld = True
-                StartRunIfReady()
+                If Not paused Then
+                    leftHeld = True
+                    StartRunIfReady()
+                End If
                 Return True
             Case Keys.Right
-                rightHeld = True
-                StartRunIfReady()
+                If Not paused Then
+                    rightHeld = True
+                    StartRunIfReady()
+                End If
                 Return True
             Case Keys.Up
                 PressJump()
                 Return True
-            Case Keys.Escape
-                TogglePause()
+            Case Keys.Escape, Keys.P
+                If Not pauseKeyHeld Then
+                    pauseKeyHeld = True
+                    TogglePause()
+                End If
                 Return True
         End Select
         Return MyBase.ProcessCmdKey(msg, keyData)
@@ -153,13 +170,19 @@ Public Class JumpKnightGameForm
     Private Sub Form_KeyDown(sender As Object, e As KeyEventArgs)
         Select Case e.KeyCode
             Case Keys.A
-                leftHeld = True
-                StartRunIfReady()
+                If Not paused Then
+                    leftHeld = True
+                    StartRunIfReady()
+                End If
             Case Keys.D
-                rightHeld = True
-                StartRunIfReady()
-            Case Keys.W, Keys.Space
+                If Not paused Then
+                    rightHeld = True
+                    StartRunIfReady()
+                End If
+            Case Keys.W
                 PressJump()
+            Case Keys.Space
+                PressAttack()
         End Select
         e.Handled = True
     End Sub
@@ -170,12 +193,16 @@ Public Class JumpKnightGameForm
                 leftHeld = False
             Case Keys.Right, Keys.D
                 rightHeld = False
-            Case Keys.Up, Keys.W, Keys.Space
+            Case Keys.Up, Keys.W
                 jumpHeld = False
+            Case Keys.Space
+                attackHeld = False
+            Case Keys.P, Keys.Escape
+                pauseKeyHeld = False
         End Select
     End Sub
 
-    ' Only the first press counts, so holding the key does not spam double jumps.
+    ' UP / W: double jump (only works with the meat buff). First press only.
     Private Sub PressJump()
         If jumpHeld Then Return
         jumpHeld = True
@@ -187,6 +214,14 @@ Public Class JumpKnightGameForm
         End If
     End Sub
 
+    ' SPACE: sword attack. Holding the key triggers ONE attack; the engine adds duration + cooldown.
+    Private Sub PressAttack()
+        If attackHeld Then Return
+        attackHeld = True
+        If paused Then Return                       ' pause screen and countdown: no attacks
+        engine.TryAttack()                          ' the engine ignores it unless the game is running
+    End Sub
+
     Private Sub StartRunIfReady()
         If paused Then Return
         If engine.State = JKState.Ready Then engine.Begin()
@@ -196,49 +231,99 @@ Public Class JumpKnightGameForm
         leftHeld = False
         rightHeld = False
         jumpHeld = False
+        attackHeld = False
+        pauseKeyHeld = False
     End Sub
 
-    ' ===================== Pause / Retry / Menu =====================
+    ' ===================== Pause / resume countdown (one implementation for all inputs) =====================
 
     Private Sub Form_Deactivate(sender As Object, e As EventArgs)
         ClearKeys()
-        If engine.State = JKState.Playing AndAlso Not paused Then SetPaused(True)
+        If engine.State = JKState.Playing AndAlso (Not paused OrElse countingDown) Then PauseGame()
     End Sub
 
+    Private Sub RenderPanel_PauseClicked()
+        PauseGame()
+    End Sub
+
+    ''' <summary>P / Esc: pause when playing, cancel a countdown, or start the resume countdown when paused.</summary>
     Private Sub TogglePause()
         If engine.State <> JKState.Playing Then Return
-        SetPaused(Not paused)
+        If countingDown Then
+            PauseGame()                 ' cancel the countdown, back to the pause screen
+        ElseIf paused Then
+            BeginResumeCountdown()
+        Else
+            PauseGame()
+        End If
     End Sub
 
-    Private Sub SetPaused(value As Boolean)
-        If paused = value Then Return
-        paused = value
-        If paused Then
-            gameTimer.Stop()
-            clock.Stop()
-            renderPanel.Overlay = JKOverlay.Paused
-            resumeButton.Visible = True
-            menuButton.Visible = True
-            retryButton.Visible = False
-        Else
-            renderPanel.Overlay = JKOverlay.None
-            resumeButton.Visible = False
-            menuButton.Visible = False
-            accumulator = 0.0F
-            clock.Restart()
-            gameTimer.Start()
-            Me.Focus()
-        End If
+    ''' <summary>Freezes everything and shows the PAUSED screen. Safe to call more than once.</summary>
+    Private Sub PauseGame()
+        If engine.State <> JKState.Playing Then Return
+        StopCountdown()
+        paused = True
+        gameTimer.Stop()
+        clock.Stop()
+        ClearKeys()
+        renderPanel.Overlay = JKOverlay.Paused
+        resumeButton.Visible = True
+        menuButton.Visible = True
+        retryButton.Visible = False
         PositionButtons()
         renderPanel.Invalidate()
     End Sub
 
     Private Sub ResumeButton_Click(sender As Object, e As EventArgs)
-        SetPaused(False)
+        BeginResumeCountdown()
+    End Sub
+
+    ''' <summary>Hides the pause screen and counts 3, 2, 1, GO! with the game still frozen.</summary>
+    Private Sub BeginResumeCountdown()
+        If Not paused OrElse countingDown Then Return      ' cannot start twice
+        If engine.State <> JKState.Playing Then Return
+
+        countingDown = True
+        countdownStep = 3
+        renderPanel.Overlay = JKOverlay.None
+        resumeButton.Visible = False
+        menuButton.Visible = False
+        renderPanel.CountdownText = "3"
+        countdownTimer.Stop()
+        countdownTimer.Start()
+        renderPanel.Invalidate()
+    End Sub
+
+    Private Sub CountdownTimer_Tick(sender As Object, e As EventArgs)
+        countdownStep -= 1
+        If countdownStep >= 1 Then
+            renderPanel.CountdownText = countdownStep.ToString()
+        ElseIf countdownStep = 0 Then
+            renderPanel.CountdownText = "GO!"
+            ResumeGameplay()                                ' the timer keeps running one more tick to clear "GO!"
+        Else
+            StopCountdown()
+        End If
+        renderPanel.Invalidate()
+    End Sub
+
+    Private Sub ResumeGameplay()
+        countingDown = False
+        paused = False
+        accumulator = 0.0F
+        clock.Restart()
+        gameTimer.Start()
+        Me.Focus()
+    End Sub
+
+    Private Sub StopCountdown()
+        countdownTimer.Stop()
+        countingDown = False
+        renderPanel.CountdownText = ""
     End Sub
 
     Private Sub RetryButton_Click(sender As Object, e As EventArgs)
-        ' Same timer, same event handlers: only the state is reset.
+        StopCountdown()
         engine.Reset()
         ClearKeys()
         paused = False
@@ -260,6 +345,7 @@ Public Class JumpKnightGameForm
     ' ===================== Engine events =====================
 
     Private Sub Engine_GameEnded()
+        StopCountdown()
         gameTimer.Stop()
         clock.Stop()
         PlaySfx(SfxGameOver)
@@ -291,6 +377,14 @@ Public Class JumpKnightGameForm
         PlaySfx(SfxWoodBreak)
     End Sub
 
+    Private Sub Engine_Attacked()
+        PlaySfx(SfxAttack)
+    End Sub
+
+    Private Sub Engine_BatHit()
+        PlaySfx(SfxBatHit)
+    End Sub
+
     Private Sub PlaySfx(relativePath As String)
         If relativePath <> "" Then AudioManager.PlaySfx(relativePath)
     End Sub
@@ -302,11 +396,18 @@ Public Class JumpKnightGameForm
         RemoveHandler gameTimer.Tick, AddressOf GameTimer_Tick
         gameTimer.Dispose()
 
+        countdownTimer.Stop()
+        RemoveHandler countdownTimer.Tick, AddressOf CountdownTimer_Tick
+        countdownTimer.Dispose()
+
+        RemoveHandler renderPanel.PauseClicked, AddressOf RenderPanel_PauseClicked
         RemoveHandler engine.Bounced, AddressOf Engine_Bounced
         RemoveHandler engine.SpringUsed, AddressOf Engine_SpringUsed
         RemoveHandler engine.MeatCollected, AddressOf Engine_MeatCollected
         RemoveHandler engine.DoubleJumped, AddressOf Engine_DoubleJumped
         RemoveHandler engine.WoodBroke, AddressOf Engine_WoodBroke
+        RemoveHandler engine.Attacked, AddressOf Engine_Attacked
+        RemoveHandler engine.BatHit, AddressOf Engine_BatHit
         RemoveHandler engine.GameEnded, AddressOf Engine_GameEnded
 
         If MusicTrack <> "" Then AudioManager.StopMusic()

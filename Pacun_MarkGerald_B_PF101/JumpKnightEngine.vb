@@ -1,15 +1,4 @@
-﻿' =====================================================================================
-'  JumpKnightEngine.vb
-'  All gameplay rules for Level 2 (Jump Knight). This file contains NO drawing code.
-'
-'  Coordinate system ("world coordinates"):
-'    * X goes right, from 0 to WorldW (400).
-'    * Y goes UP. The knight starts near y = 80 and climbs to bigger numbers.
-'    * CamBottom is the world-Y shown at the bottom edge of the screen. It only ever increases.
-'    * The renderer converts world -> screen, so physics never depends on window size.
-' =====================================================================================
-
-Public Enum JKState
+﻿Public Enum JKState
     Ready       ' knight waits on the start platform until the first key press
     Playing
     GameOver
@@ -31,14 +20,14 @@ Public Class JKPlatform
     Public Kind As JKPlatformKind
     Public X As Single              ' left edge
     Public Y As Single              ' top surface (the knight lands on this height)
-    Public Width As Single
-    Public Dir As Single = 1.0F     ' moving platforms: +1 right, -1 left
+    Public Width As Single          ' collision width AND drawn width (they always agree)
+    Public Dir As Single = 1.0F
     Public Speed As Single
-    Public MinX As Single           ' moving platforms: left limit
-    Public MaxX As Single           ' moving platforms: right limit
-    Public LastDX As Single         ' how far it moved this step (used to carry the knight)
-    Public Solid As Boolean = True  ' false once a wooden platform has been used
-    Public BreakTime As Single = -1.0F   ' < 0 = intact, otherwise seconds since it started breaking
+    Public MinX As Single
+    Public MaxX As Single
+    Public LastDX As Single
+    Public Solid As Boolean = True
+    Public BreakTime As Single = -1.0F
 
     Public ReadOnly Property IsBreaking As Boolean
         Get
@@ -59,7 +48,17 @@ Public Class JKEnemy
     Public X As Single              ' centre X
     Public Y As Single              ' centre Y
     Public VX As Single
-    Public Phase As Single          ' offsets the wing animation so bats do not flap in sync
+    Public VY As Single             ' only used after the bat has been hit (it falls)
+    Public Phase As Single
+    Public Hit As Boolean           ' true once the sword has hit it: harmless, cannot be hit again
+    Public HitTime As Single
+End Class
+
+''' <summary>Short-lived spark + "+points" effect where a bat was hit.</summary>
+Public Class JKImpact
+    Public X As Single
+    Public Y As Single
+    Public Age As Single
 End Class
 
 Public Class JumpKnightEngine
@@ -74,31 +73,42 @@ Public Class JumpKnightEngine
 
     ' ---------- Tuning values (units per second) ----------
     Private Const Gravity As Single = 1500.0F
-    Private Const JumpVel As Single = 700.0F          ' rises v^2 / 2g = ~163 units
-    Private Const SpringVel As Single = 1150.0F       ' rises ~441 units (about 2.7x a normal jump)
+    Private Const JumpVel As Single = 700.0F          ' rises ~163 units
+    Private Const SpringVel As Single = 1150.0F
     Private Const DoubleJumpVel As Single = 700.0F
     Private Const MoveSpeed As Single = 260.0F
-    Private Const GroundAccel As Single = 2600.0F     ' snappy steering
-    Private Const IceAccel As Single = 520.0F         ' sluggish steering while slippery
-    Private Const IceFriction As Single = 140.0F      ' almost no braking while slippery
-    Public Const BuffDuration As Single = 5.0F        ' meat: seconds of double jump
+    Private Const GroundAccel As Single = 2600.0F
+    Private Const IceAccel As Single = 520.0F
+    Private Const IceFriction As Single = 140.0F
+    Public Const BuffDuration As Single = 5.0F
+
+    ' ---------- Sword attack ----------
+    Public Const AttackDuration As Single = 0.18F      ' how long the slash is active
+    Public Const AttackCooldownTime As Single = 0.4F   ' time from one press until the next is allowed
+    Public Const AttackReach As Single = 52.0F         ' slash radius (world units) - the drawn arc uses this too
+    Public Const AttackCenterY As Single = 22.0F       ' slash centre height above the knight's feet
+    Public Const BatPoints As Integer = 25
+    Private Const BatHitRadius As Single = 11.0F
 
     ' ---------- Platform generation ----------
-    Public Const StoneWidth As Single = 64.0F
-    Public Const WoodWidth As Single = 72.0F
+    Public Const StoneWidth As Single = 48.0F          ' was 64
+    Public Const WoodWidth As Single = 54.0F           ' was 72
+    Private Const LandInset As Single = 4.0F           ' feet may overlap this much past the platform edge
     Private Const MinGap As Single = 62.0F
-    Private Const MaxGapStart As Single = 100.0F      ' easy early game
-    Private Const MaxGapEnd As Single = 138.0F        ' always below the 163 jump height
+    Private Const MaxGapStart As Single = 100.0F
+    Private Const MaxGapEnd As Single = 138.0F
     Private Const StartPlatformY As Single = 80.0F
-    Private Const DifficultyRange As Single = 9000.0F ' world units until difficulty is at maximum
+    Private Const DifficultyRange As Single = 9000.0F
+    Private Const FirstBatHeight As Single = 450.0F
 
     ' ---------- Public state read by the renderer ----------
     Public ReadOnly Platforms As New List(Of JKPlatform)
     Public ReadOnly Enemies As New List(Of JKEnemy)
     Public ReadOnly PowerUps As New List(Of JKPowerUp)
+    Public ReadOnly Impacts As New List(Of JKImpact)
 
     Public State As JKState = JKState.Ready
-    Public KnightX As Single            ' centre X
+    Public KnightX As Single
     Public KnightFeetY As Single
     Public VelX As Single
     Public VelY As Single
@@ -106,30 +116,38 @@ Public Class JumpKnightEngine
     Public FacingLeft As Boolean
     Public Steering As Boolean
     Public Slippery As Boolean
-    Public BounceTimer As Single        ' short timer after a bounce (used for the landing animation)
-    Public BuffTime As Single           ' seconds of double jump left
-    Public SpringFlash As Single        ' seconds left to show "SUPER JUMP!"
-    Public AnimClock As Single          ' keeps running for animations
+    Public BounceTimer As Single
+    Public BuffTime As Single
+    Public SpringFlash As Single
+    Public AnimClock As Single
     Public Score As Integer
+    Public BonusScore As Integer
     Public BestScore As Integer
     Public NewBest As Boolean
     Public DiedByEnemy As Boolean
-    Public WrapScreen As Boolean = True ' false = walls stop the knight instead
+    Public WrapScreen As Boolean = True
 
-    ' ---------- Events (the form turns these into sound effects) ----------
+    Public AttackTime As Single         ' > 0 while the slash is active
+    Public AttackCooldown As Single     ' > 0 while another attack is not allowed
+    Public AttackLeft As Boolean        ' direction the current slash faces
+
+    ' ---------- Events ----------
     Public Event Bounced(kind As JKPlatformKind)
     Public Event SpringUsed()
     Public Event MeatCollected()
     Public Event DoubleJumped()
     Public Event WoodBroke()
+    Public Event Attacked()
+    Public Event BatHit()
     Public Event GameEnded()
 
     ' ---------- Private state ----------
     Private ReadOnly rng As New Random()
     Private startFeetY As Single
     Private maxHeight As Single
-    Private topY As Single              ' Y of the highest generated platform
-    Private lastX As Single             ' left X of the last main platform
+    Private heightScore As Integer
+    Private topY As Single
+    Private lastX As Single
     Private lastKind As JKPlatformKind
     Private nextEnemyY As Single
     Private doubleJumpAvailable As Boolean
@@ -142,11 +160,11 @@ Public Class JumpKnightEngine
 
     ' ===================== Run control =====================
 
-    ''' <summary>Starts a completely fresh run. Safe to call repeatedly (Retry).</summary>
     Public Sub Reset()
         Platforms.Clear()
         Enemies.Clear()
         PowerUps.Clear()
+        Impacts.Clear()
 
         State = JKState.Ready
         KnightX = WorldW / 2.0F
@@ -161,25 +179,28 @@ Public Class JumpKnightEngine
         BounceTimer = 0.0F
         BuffTime = 0.0F
         SpringFlash = 0.0F
+        AttackTime = 0.0F
+        AttackCooldown = 0.0F
+        AttackLeft = False
         Score = 0
+        BonusScore = 0
+        heightScore = 0
         NewBest = False
         DiedByEnemy = False
         maxHeight = 0.0F
         doubleJumpAvailable = False
         jumpQueued = False
 
-        ' Start platform right under the knight.
         Dim startX As Single = WorldW / 2.0F - StoneWidth / 2.0F
         Platforms.Add(New JKPlatform With {.Kind = JKPlatformKind.Stone, .X = startX, .Y = StartPlatformY, .Width = StoneWidth})
         topY = StartPlatformY
         lastX = startX
         lastKind = JKPlatformKind.Stone
-        nextEnemyY = 1300.0F
+        nextEnemyY = FirstBatHeight
 
         EnsureGenerated()
     End Sub
 
-    ''' <summary>Called on the first key press. Gives the knight its first bounce.</summary>
     Public Sub Begin()
         If State <> JKState.Ready Then Return
         State = JKState.Playing
@@ -189,10 +210,23 @@ Public Class JumpKnightEngine
         RaiseEvent Bounced(JKPlatformKind.Stone)
     End Sub
 
-    ''' <summary>Asks for a mid-air jump. Only works while the meat buff is active.</summary>
     Public Sub RequestDoubleJump()
         If State = JKState.Playing Then jumpQueued = True
     End Sub
+
+    ''' <summary>
+    ''' Starts a sword slash (only while playing, and only when the cooldown is over).
+    ''' Returns True if a new slash started.
+    ''' </summary>
+    Public Function TryAttack() As Boolean
+        If State <> JKState.Playing Then Return False
+        If AttackCooldown > 0.0F Then Return False
+        AttackTime = AttackDuration
+        AttackCooldown = AttackCooldownTime
+        AttackLeft = FacingLeft
+        RaiseEvent Attacked()
+        Return True
+    End Function
 
     ' ===================== Main update (called with a FIXED dt) =====================
 
@@ -210,8 +244,12 @@ Public Class JumpKnightEngine
         BuffTime = Math.Max(0.0F, BuffTime - dt)
         BounceTimer = Math.Max(0.0F, BounceTimer - dt)
         SpringFlash = Math.Max(0.0F, SpringFlash - dt)
+        AttackTime = Math.Max(0.0F, AttackTime - dt)
+        AttackCooldown = Math.Max(0.0F, AttackCooldown - dt)
+        For Each imp As JKImpact In Impacts
+            imp.Age += dt
+        Next
 
-        ' --- Queued double jump (meat buff) ---
         If jumpQueued Then
             jumpQueued = False
             If BuffTime > 0.0F AndAlso doubleJumpAvailable AndAlso VelY < DoubleJumpVel * 0.9F Then
@@ -221,7 +259,6 @@ Public Class JumpKnightEngine
             End If
         End If
 
-        ' --- Horizontal steering (normal = snappy, slippery = keeps momentum) ---
         Dim accel As Single = If(Slippery, IceAccel, GroundAccel)
         Dim friction As Single = If(Slippery, IceFriction, GroundAccel)
         If moveDir <> 0 Then
@@ -233,34 +270,31 @@ Public Class JumpKnightEngine
         UpdatePlatforms(dt)
         UpdateEnemies(dt)
 
-        ' --- Vertical movement ---
         Dim prevFeetY As Single = KnightFeetY
         VelY -= Gravity * dt
         KnightFeetY += VelY * dt
         KnightX += VelX * dt
         HandleHorizontalBounds()
 
-        ' --- Landing: only while falling, only from above ---
         If VelY <= 0.0F Then CheckLanding(prevFeetY)
 
         CheckPowerUps()
+        If AttackTime > 0.0F Then ProcessAttack()          ' before CheckEnemies: a bat you slash cannot hurt you
         If State = JKState.Playing Then CheckEnemies()
 
-        ' --- Camera only moves up ---
         Dim followLine As Single = CamBottom + ViewH * 0.55F
         If KnightFeetY > followLine Then CamBottom = KnightFeetY - ViewH * 0.55F
 
-        ' --- Score = highest point reached ---
         Dim height As Single = KnightFeetY - startFeetY
         If height > maxHeight Then
             maxHeight = height
-            Score = CInt(Math.Floor(maxHeight / 10.0F))
+            heightScore = CInt(Math.Floor(maxHeight / 10.0F))
         End If
+        Score = heightScore + BonusScore
 
         EnsureGenerated()
         Cleanup()
 
-        ' --- Fell below the screen ---
         If State = JKState.Playing AndAlso KnightFeetY + 10.0F < CamBottom Then EndGame(False)
     End Sub
 
@@ -274,7 +308,6 @@ Public Class JumpKnightEngine
     Private Sub HandleHorizontalBounds()
         Dim half As Single = KnightW / 2.0F
         If WrapScreen Then
-            ' Fully off one edge -> reappear fully off the opposite edge.
             If KnightX + half < 0.0F Then
                 KnightX += WorldW + KnightW
             ElseIf KnightX - half > WorldW Then
@@ -311,13 +344,21 @@ Public Class JumpKnightEngine
 
     Private Sub UpdateEnemies(dt As Single)
         For Each en As JKEnemy In Enemies
-            en.X += en.VX * dt
-            If en.X < 20.0F Then
-                en.X = 20.0F
-                en.VX = Math.Abs(en.VX)
-            ElseIf en.X > WorldW - 20.0F Then
-                en.X = WorldW - 20.0F
-                en.VX = -Math.Abs(en.VX)
+            If en.Hit Then
+                ' Defeated bat: knocked back, then falls away.
+                en.HitTime += dt
+                en.VY -= 1300.0F * dt
+                en.Y += en.VY * dt
+                en.X += en.VX * dt
+            Else
+                en.X += en.VX * dt
+                If en.X < 20.0F Then
+                    en.X = 20.0F
+                    en.VX = Math.Abs(en.VX)
+                ElseIf en.X > WorldW - 20.0F Then
+                    en.X = WorldW - 20.0F
+                    en.VX = -Math.Abs(en.VX)
+                End If
             End If
         Next
     End Sub
@@ -329,9 +370,8 @@ Public Class JumpKnightEngine
 
         For Each p As JKPlatform In Platforms
             If Not p.Solid Then Continue For
-            ' Feet were at/above the surface last step and are at/below it now = came from above.
             If prevFeetY >= p.Y - 1.0F AndAlso KnightFeetY <= p.Y Then
-                If right > p.X + 6.0F AndAlso left < p.X + p.Width - 6.0F Then
+                If right > p.X + LandInset AndAlso left < p.X + p.Width - LandInset Then
                     If best Is Nothing OrElse p.Y > best.Y Then best = p
                 End If
             End If
@@ -343,11 +383,11 @@ Public Class JumpKnightEngine
         VelY = JumpVel
         BounceTimer = 0.12F
         doubleJumpAvailable = True
-        Slippery = (best.Kind = JKPlatformKind.Ice)   ' normal landings restore normal grip
+        Slippery = (best.Kind = JKPlatformKind.Ice)
 
-        If best.Kind = JKPlatformKind.Moving Then KnightX += best.LastDX   ' ride along for this step
+        If best.Kind = JKPlatformKind.Moving Then KnightX += best.LastDX
         If best.Kind = JKPlatformKind.Wood Then
-            best.Solid = False          ' cannot be landed on again
+            best.Solid = False
             best.BreakTime = 0.0F
             RaiseEvent WoodBroke()
         End If
@@ -367,7 +407,7 @@ Public Class JumpKnightEngine
                 kt > pu.Y AndAlso kb < pu.Y + pu.Height
             If Not overlap Then Continue For
 
-            PowerUps.RemoveAt(i)        ' consumed: can never trigger twice
+            PowerUps.RemoveAt(i)
             If pu.Kind = JKPowerUpKind.Hammer Then
                 VelY = Math.Max(VelY, SpringVel)
                 doubleJumpAvailable = True
@@ -375,21 +415,45 @@ Public Class JumpKnightEngine
                 BounceTimer = 0.12F
                 RaiseEvent SpringUsed()
             Else
-                BuffTime = BuffDuration           ' picking up another meat just refreshes the timer
+                BuffTime = BuffDuration
                 doubleJumpAvailable = True
                 RaiseEvent MeatCollected()
             End If
         Next
     End Sub
 
+    ''' <summary>Hits every not-yet-hit bat inside the half-circle in front of the knight.</summary>
+    Private Sub ProcessAttack()
+        Dim dir As Single = If(AttackLeft, -1.0F, 1.0F)
+        Dim cx As Single = KnightX
+        Dim cy As Single = KnightFeetY + AttackCenterY
+        Dim reach As Single = AttackReach + BatHitRadius
+
+        For Each en As JKEnemy In Enemies
+            If en.Hit Then Continue For                 ' a bat can only be hit (and scored) once
+            Dim dx As Single = en.X - cx
+            Dim dy As Single = en.Y - cy
+            If dx * dir < -8.0F Then Continue For       ' behind the knight
+            If dx * dx + dy * dy > reach * reach Then Continue For
+
+            en.Hit = True
+            en.HitTime = 0.0F
+            en.VY = 240.0F
+            en.VX = dir * 90.0F
+            BonusScore += BatPoints
+            Impacts.Add(New JKImpact With {.X = en.X, .Y = en.Y, .Age = 0.0F})
+            RaiseEvent BatHit()
+        Next
+    End Sub
+
     Private Sub CheckEnemies()
-        ' Slightly forgiving hitboxes so deaths feel fair.
         Dim kl As Single = KnightX - KnightW / 2.0F + 3.0F
         Dim kr As Single = KnightX + KnightW / 2.0F - 3.0F
         Dim kb As Single = KnightFeetY + 3.0F
         Dim kt As Single = KnightFeetY + KnightH - 4.0F
 
         For Each en As JKEnemy In Enemies
+            If en.Hit Then Continue For
             If kr > en.X - 12.0F AndAlso kl < en.X + 12.0F AndAlso kt > en.Y - 9.0F AndAlso kb < en.Y + 9.0F Then
                 EndGame(True)
                 Return
@@ -416,7 +480,6 @@ Public Class JumpKnightEngine
     End Function
 
     Private Sub EnsureGenerated()
-        ' Keep platforms generated well above the top of the screen.
         While topY < CamBottom + ViewH + 400.0F
             AddRow()
         End While
@@ -436,7 +499,6 @@ Public Class JumpKnightEngine
         lastX = x
         lastKind = kind
 
-        ' Sometimes a second (always stone) platform on the same row, far from the first.
         If topY > 300.0F AndAlso rng.NextDouble() < 0.25 Then
             Dim x2 As Single
             If x + pw / 2.0F < WorldW / 2.0F Then
@@ -447,7 +509,6 @@ Public Class JumpKnightEngine
             AddPlatform(JKPlatformKind.Stone, x2, topY, StoneWidth, d)
         End If
 
-        ' Power-ups only sit on plain stone platforms (they never move or break away).
         If kind = JKPlatformKind.Stone AndAlso topY > 500.0F Then
             Dim roll As Double = rng.NextDouble()
             If roll < 0.07 Then
@@ -457,7 +518,7 @@ Public Class JumpKnightEngine
             End If
         End If
 
-        ' Flying enemies: first one appears high up, then more often as difficulty rises.
+        ' Flying bats: the first one appears early, then more often as difficulty rises.
         If topY >= nextEnemyY Then
             Dim speed As Single = 70.0F + 60.0F * d + CSng(rng.NextDouble()) * 30.0F
             Dim direction As Single = If(rng.Next(0, 2) = 0, -1.0F, 1.0F)
@@ -466,7 +527,7 @@ Public Class JumpKnightEngine
                 .Y = topY - gap / 2.0F,
                 .VX = speed * direction,
                 .Phase = CSng(rng.NextDouble()) * 2.0F})
-            Dim interval As Single = 1300.0F - 650.0F * d
+            Dim interval As Single = 900.0F - 400.0F * d
             nextEnemyY = topY + interval * (0.75F + 0.5F * CSng(rng.NextDouble()))
         End If
     End Sub
@@ -484,12 +545,10 @@ Public Class JumpKnightEngine
     End Sub
 
     Private Function PickKind(d As Single, worldY As Single) As JKPlatformKind
-        ' Each special type unlocks at a height and becomes more common as d grows.
         Dim pWood As Double = If(worldY >= 400.0F, 0.06 + 0.2 * d, 0.0)
         Dim pIce As Double = If(worldY >= 800.0F, 0.05 + 0.15 * d, 0.0)
         Dim pMove As Double = If(worldY >= 1200.0F, 0.05 + 0.2 * d, 0.0)
 
-        ' Never chain two breakables or two ice platforms in a row.
         If lastKind = JKPlatformKind.Wood Then pWood = 0.0
         If lastKind = JKPlatformKind.Ice Then pIce = 0.0
 
@@ -503,11 +562,11 @@ Public Class JumpKnightEngine
     End Function
 
     Private Sub Cleanup()
-        ' Remove everything that is safely below the screen so memory never grows.
         Dim limit As Single = CamBottom - 150.0F
         Platforms.RemoveAll(Function(p) p.Y < limit OrElse (p.IsBreaking AndAlso p.BreakTime > 1.0F))
-        Enemies.RemoveAll(Function(en) en.Y < limit)
+        Enemies.RemoveAll(Function(en) en.Y < limit OrElse (en.Hit AndAlso en.HitTime > 1.0F))
         PowerUps.RemoveAll(Function(pu) pu.Y < limit)
+        Impacts.RemoveAll(Function(i) i.Age > 0.5F)
     End Sub
 
 End Class

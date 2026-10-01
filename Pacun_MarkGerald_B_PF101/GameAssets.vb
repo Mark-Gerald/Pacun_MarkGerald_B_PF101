@@ -14,6 +14,20 @@ Public Module GameAssets
     Public Const BoatCellWidth As Integer = 84
     Public Const BoatCellHeight As Integer = 96
 
+    ' Confirmed from filenames: the Topdown_RPG_32x32_* tile sheets use a 32x32 grid.
+    Public Const RpgTileSize As Integer = 32
+
+    ' NOT YET CONFIRMED -- placeholders only, pending actual Farmer-*.png pixel
+    ' dimensions. Do not rely on these until updated; GetFrame() will safely
+    ' return Nothing (not crash) if these turn out to be wrong, since it checks
+    ' frame bounds against the real image size before cropping.
+    Public Const FarmerIdleFrameW As Integer = 32
+    Public Const FarmerIdleFrameH As Integer = 32
+    Public Const FarmerWalkFrameW As Integer = 32
+    Public Const FarmerWalkFrameH As Integer = 32
+    Public Const FarmerJumpFrameW As Integer = 32
+    Public Const FarmerJumpFrameH As Integer = 32
+
     Private ReadOnly sheets As New Dictionary(Of String, Image)
     Private ReadOnly frameCache As New Dictionary(Of String, Bitmap)
 
@@ -38,6 +52,16 @@ Public Module GameAssets
         End Try
     End Function
 
+    ''' <summary>
+    ''' Reports a sheet's actual pixel dimensions, or Nothing if it can't be loaded.
+    ''' Useful for confirming real frame sizes before guessing a crop grid.
+    ''' </summary>
+    Public Function GetSheetSize(relativePath As String) As Size?
+        Dim sheet As Image = GetSheet(relativePath)
+        If sheet Is Nothing Then Return Nothing
+        Return New Size(sheet.Width, sheet.Height)
+    End Function
+
     ''' <summary>Crops one frame out of a sprite sheet, caching the result.</summary>
     Public Function GetFrame(relativePath As String, col As Integer, row As Integer, frameW As Integer, frameH As Integer) As Bitmap
         Dim key As String = relativePath & ":" & col & "," & row & "," & frameW & "x" & frameH
@@ -49,7 +73,9 @@ Public Module GameAssets
         Dim srcX As Integer = col * frameW
         Dim srcY As Integer = row * frameH
         If srcX + frameW > sheet.Width OrElse srcY + frameH > sheet.Height Then
-            Debug.WriteLine("GameAssets: requested frame is out of bounds for " & relativePath)
+            Debug.WriteLine("GameAssets: requested frame is out of bounds for " & relativePath &
+                             " (sheet is " & sheet.Width & "x" & sheet.Height &
+                             ", requested col=" & col & " row=" & row & " size=" & frameW & "x" & frameH & ")")
             Return Nothing
         End If
 
