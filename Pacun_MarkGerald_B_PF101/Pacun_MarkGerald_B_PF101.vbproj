@@ -293,23 +293,102 @@
     <Content Include="Assets\Audio\SFX\Nope_Invalid_Move.mp3" />
     <Content Include="Assets\Audio\SFX\Victory_Jingle.mp3" />
     <Content Include="Assets\Audio\SFX\Walking_On_Wood_Sound_Effect.mp3" />
-    <Content Include="Assets\Character\character-Sheet.png" />
-    <Content Include="Assets\enemies\enemy_fly-Sheet.png" />
-    <Content Include="Assets\enemies\ground_enemy-Sheet.png" />
-    <Content Include="Assets\enviroment\Boat.png" />
-    <Content Include="Assets\enviroment\carrot.png" />
-    <Content Include="Assets\enviroment\coin-Sheet.png" />
-    <Content Include="Assets\enviroment\glow_carrot.png" />
-    <Content Include="Assets\enviroment\life.png" />
-    <Content Include="Assets\enviroment\sky.png" />
-    <Content Include="Assets\enviroment\sky_decor.png" />
-    <Content Include="Assets\tilesets\Blocks.png" />
-    <Content Include="Assets\tilesets\Grass_rocks.png" />
-    <Content Include="Assets\tilesets\Grass_rocks_2.png" />
-    <Content Include="Assets\tilesets\platforms.png" />
-    <Content Include="Assets\tilesets\Rocks.png" />
-    <Content Include="Assets\tilesets\rocks_2.png" />
-    <Content Include="Assets\tilesets\water-Sheet.png" />
+    <Content Include="Assets\Character\character-Sheet.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Character\Knight-Idle.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Character\Knight-Jump.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Character\Knight-Walk.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enemies\AnimalSheet.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enemies\enemy_fly-Sheet.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enemies\ground_enemy-Sheet.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Boat.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\carrot.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\coin-Sheet.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\glow_carrot.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\life.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Meat_Resource.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\sky.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\sky_decor.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\Tool_Hammer.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\walls.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\walls_far.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\walls_side_top.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\enviroment\walls_side_top_far.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\Blocks.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\Clouds_03.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\grass_platform.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\Grass_rocks.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\Grass_rocks_2.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\MossyRockTileSet.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\platforms.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\Rocks.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\rocks_2.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\tileset_ICEBURG.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\water-Sheet.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\tilesets\wood_env.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="LessonContent\Lesson01_Orientation\Presentation\orientation_page_01.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
