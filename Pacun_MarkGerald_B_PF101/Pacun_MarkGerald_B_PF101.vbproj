@@ -105,6 +105,29 @@
     <Compile Include="GradeCalculator.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="JumpKnightAssets.Designer.vb">
+      <DependentUpon>JumpKnightAssets.vb</DependentUpon>
+    </Compile>
+    <Compile Include="JumpKnightAssets.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="JumpKnightEngine.Designer.vb">
+      <DependentUpon>JumpKnightEngine.vb</DependentUpon>
+    </Compile>
+    <Compile Include="JumpKnightEngine.vb" />
+    <Compile Include="JumpKnightGameForm.Designer.vb">
+      <DependentUpon>JumpKnightGameForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="JumpKnightGameForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="JumpKnightPanel.Designer.vb">
+      <DependentUpon>JumpKnightPanel.vb</DependentUpon>
+    </Compile>
+    <Compile Include="JumpKnightPanel.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="JumpKnightScores.vb" />
     <Compile Include="Level1GameplayForm.Designer.vb">
       <DependentUpon>Level1GameplayForm.vb</DependentUpon>
     </Compile>
@@ -121,6 +144,12 @@
       <DependentUpon>Level1SettingsForm.vb</DependentUpon>
     </Compile>
     <Compile Include="Level1SettingsForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Level2MenuForm.Designer.vb">
+      <DependentUpon>Level2MenuForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Level2MenuForm.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Level2PlaceholderForm.Designer.vb">
