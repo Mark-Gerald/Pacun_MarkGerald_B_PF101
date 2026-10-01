@@ -1650,11 +1650,19 @@
 
     Private Sub OpenAnimationLevel2(sender As Object, e As EventArgs)
         CloseLessonsDropdown()
-        MessageBox.Show(
-        "Animation Level 2 will be implemented soon.",
-        "Animation - Level 2",
-        MessageBoxButtons.OK,
-        MessageBoxIcon.Information)
+        Try
+            ' Only one Level 2 menu may exist at a time.
+            If Level2MenuForm.IsOpen() Then
+                Level2MenuForm.BringExistingToFront()
+                Return
+            End If
+
+            Dim level2Menu As New Level2MenuForm()
+            level2Menu.StartPosition = FormStartPosition.CenterParent
+            level2Menu.Show()
+        Catch ex As Exception
+            MessageBox.Show("Level 2 menu could not be opened." & vbCrLf & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
     End Sub
 
     Private Sub OpenAnimationLevel3(sender As Object, e As EventArgs)

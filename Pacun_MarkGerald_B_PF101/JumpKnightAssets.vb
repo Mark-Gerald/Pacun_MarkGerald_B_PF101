@@ -1,4 +1,7 @@
-﻿Imports System.Drawing.Imaging
+﻿Imports System
+Imports System.Collections.Generic
+Imports System.Drawing
+Imports System.Drawing.Imaging
 
 ''' <summary>
 ''' Loads and caches every image Jump Knight needs, ONCE. Nothing here runs per frame.
@@ -11,7 +14,7 @@
 ''' All slice coordinates below were measured from your actual PNG files.
 ''' </summary>
 Public Class JumpKnightAssets
-    Implements IDisposable
+    Implements System.IDisposable
 
     ''' <summary>How many world units one art pixel covers (pixel-art scale).</summary>
     Public Const ArtScale As Integer = 2
@@ -322,14 +325,25 @@ Public Class JumpKnightAssets
 
     ' ===================== Cleanup =====================
 
-    Public Sub Dispose() Implements IDisposable.Dispose
-        For Each b As Bitmap In owned
-            Try
-                b.Dispose()
-            Catch
-            End Try
-        Next
-        owned.Clear()
+    Private disposedValue As Boolean = False
+
+    Public Sub Dispose() Implements System.IDisposable.Dispose
+        Dispose(True)
+        GC.SuppressFinalize(Me)
+    End Sub
+
+    Protected Overridable Sub Dispose(disposing As Boolean)
+        If disposedValue Then Return
+        If disposing Then
+            For Each b As Bitmap In owned
+                Try
+                    b.Dispose()
+                Catch
+                End Try
+            Next
+            owned.Clear()
+        End If
+        disposedValue = True
     End Sub
 
 End Class

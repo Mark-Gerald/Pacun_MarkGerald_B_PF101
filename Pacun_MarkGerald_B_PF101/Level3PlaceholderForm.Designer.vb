@@ -1,5 +1,5 @@
 ﻿<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()> _
-Partial Class JumpKnightAssets
+Partial Class Level3PlaceholderForm
     Inherits System.Windows.Forms.Form
 
     'Form overrides dispose to clean up the component list.
@@ -25,6 +25,6 @@ Partial Class JumpKnightAssets
         components = New System.ComponentModel.Container
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(800, 450)
-        Me.Text = "JumpKnightAssets"
+        Me.Text = "Level3PlaceholderForm"
     End Sub
 End Class

@@ -1,5 +1,5 @@
 ﻿<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()> _
-Partial Class JumpKnightPanel
+Partial Class Level2SettingsForm
     Inherits System.Windows.Forms.Form
 
     'Form overrides dispose to clean up the component list.
@@ -25,6 +25,6 @@ Partial Class JumpKnightPanel
         components = New System.ComponentModel.Container
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(800, 450)
-        Me.Text = "JumpKnightPanel"
+        Me.Text = "Level2SettingsForm"
     End Sub
 End Class

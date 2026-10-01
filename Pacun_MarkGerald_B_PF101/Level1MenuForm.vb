@@ -90,17 +90,24 @@
 
     Private Sub NextGameButton_Click(sender As Object, e As EventArgs)
         If isTransitioning Then Return
+
+        ' If Level 2 is already open (for example from the main menu), just bring it forward.
+        If Level2MenuForm.IsOpen() Then
+            Level2MenuForm.BringExistingToFront()
+            Return
+        End If
+
         isTransitioning = True
         FadeOutThenAction(Sub()
                               Try
-                                  Dim level2Form As New Level2PlaceholderForm()
-                                  AddHandler level2Form.FormClosed, Sub(s2, e2)
+                                  Dim level2Menu As New Level2MenuForm()
+                                  AddHandler level2Menu.FormClosed, Sub(s2, e2)
                                                                         isTransitioning = False
                                                                         Me.Opacity = 1.0
                                                                         Me.Show()
                                                                     End Sub
                                   Me.Hide()
-                                  level2Form.Show()
+                                  level2Menu.Show()
                               Catch ex As Exception
                                   isTransitioning = False
                                   Me.Opacity = 1.0
@@ -129,9 +136,9 @@
 
     Private Sub Level1MenuForm_FormClosed(sender As Object, e As FormClosedEventArgs)
         scenePanel.StopAnimation()
-        ' Only fully shut down audio if nothing else in the Level 1 flow is still open.
+        ' Only fully shut down audio if nothing else in the Level 1 / Level 2 flow is still open.
         If Application.OpenForms.OfType(Of Level1GameplayForm)().Count() = 0 AndAlso
-           Application.OpenForms.OfType(Of Level2PlaceholderForm)().Count() = 0 Then
+           Application.OpenForms.OfType(Of Level2MenuForm)().Count() = 0 Then
             AudioManager.ShutdownAll()
         End If
     End Sub
