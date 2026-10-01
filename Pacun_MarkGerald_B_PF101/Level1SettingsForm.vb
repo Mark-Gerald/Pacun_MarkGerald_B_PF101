@@ -5,93 +5,94 @@
     Private sfxSlider As TrackBar
     Private musicLabel As Label
     Private sfxLabel As Label
-    Private backButton As Button
 
     Public Sub New()
         Me.Text = "Level 1 Settings"
-        Me.Size = New Size(500, 400)
+        Me.Size = New Size(520, 420)
         Me.StartPosition = FormStartPosition.CenterParent
-        Me.BackColor = Color.FromArgb(245, 245, 245)
+        Me.FormBorderStyle = FormBorderStyle.FixedDialog
+        Me.MaximizeBox = False
+        Me.MinimizeBox = False
+        Me.BackColor = Color.FromArgb(30, 30, 36)
 
-        ' Title
         Dim titleLabel As New Label() With {
             .Text = "SETTINGS",
             .Font = New Font("Segoe UI", 18.0F, FontStyle.Bold),
-            .ForeColor = Color.Black,
+            .ForeColor = Color.White,
             .Dock = DockStyle.Top,
-            .Height = 60,
+            .Height = 70,
             .TextAlign = ContentAlignment.MiddleCenter
         }
         Me.Controls.Add(titleLabel)
 
-        ' Main panel for sliders
         Dim mainPanel As New Panel() With {
             .Dock = DockStyle.Fill,
-            .Padding = New Padding(40, 20, 40, 60),
-            .BackColor = Color.White
+            .Padding = New Padding(40, 20, 40, 20),
+            .BackColor = Color.FromArgb(245, 245, 245)
         }
         Me.Controls.Add(mainPanel)
+        mainPanel.BringToFront()
+        titleLabel.SendToBack()
 
-        ' Music Volume Section
-        Dim musicCaptionLabel As New Label() With {
-            .Text = "Background Music Volume",
-            .Font = New Font("Segoe UI", 11.0F, FontStyle.Bold),
-            .ForeColor = Color.Black,
+        Dim musicCaption As New Label() With {
+            .Text = "BACKGROUND MUSIC VOLUME",
+            .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
+            .ForeColor = Color.FromArgb(40, 40, 40),
             .AutoSize = True,
-            .Location = New Point(0, 0)
+            .Location = New Point(0, 10)
         }
-        mainPanel.Controls.Add(musicCaptionLabel)
+        mainPanel.Controls.Add(musicCaption)
 
         musicSlider = New TrackBar() With {
             .Minimum = 0,
             .Maximum = 100,
             .Value = GameSettings.GetInstance().MusicVolume,
-            .Location = New Point(0, 30),
-            .Width = mainPanel.ClientSize.Width - 40,
-            .Height = 40
+            .Location = New Point(0, 40),
+            .Width = 400,
+            .TickFrequency = 10
         }
         mainPanel.Controls.Add(musicSlider)
 
         musicLabel = New Label() With {
             .Text = GameSettings.GetInstance().MusicVolume & "%",
-            .Font = New Font("Segoe UI", 10.0F),
-            .ForeColor = Color.Gray,
+            .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
+            .ForeColor = Color.FromArgb(80, 80, 80),
             .AutoSize = True,
-            .Location = New Point(0, 75)
+            .Location = New Point(0, 90)
         }
         mainPanel.Controls.Add(musicLabel)
 
         AddHandler musicSlider.ValueChanged, Sub(s, e)
                                                  GameSettings.GetInstance().MusicVolume = musicSlider.Value
                                                  musicLabel.Text = musicSlider.Value & "%"
+                                                 AudioManager.ApplyMusicVolume()
                                              End Sub
 
-        ' SFX Volume Section
-        Dim sfxCaptionLabel As New Label() With {
-            .Text = "Sound Effects Volume",
-            .Font = New Font("Segoe UI", 11.0F, FontStyle.Bold),
-            .ForeColor = Color.Black,
+        Dim sfxCaption As New Label() With {
+            .Text = "SOUND EFFECTS VOLUME",
+            .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
+            .ForeColor = Color.FromArgb(40, 40, 40),
             .AutoSize = True,
-            .Location = New Point(0, 130)
+            .Location = New Point(0, 150)
         }
-        mainPanel.Controls.Add(sfxCaptionLabel)
+        mainPanel.Controls.Add(sfxCaption)
 
         sfxSlider = New TrackBar() With {
             .Minimum = 0,
             .Maximum = 100,
             .Value = GameSettings.GetInstance().SfxVolume,
-            .Location = New Point(0, 160),
-            .Width = mainPanel.ClientSize.Width - 40,
-            .Height = 40
+            .Location = New Point(0, 180),
+            .Width = 400,
+            .TickFrequency = 10
         }
         mainPanel.Controls.Add(sfxSlider)
 
         sfxLabel = New Label() With {
             .Text = GameSettings.GetInstance().SfxVolume & "%",
-            .Font = New Font("Segoe UI", 10.0F),
-            .ForeColor = Color.Gray,
+            .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
+            .ForeColor = Color.FromArgb(80, 80, 80),
             .AutoSize = True,
-            .Location = New Point(0, 205)
+            .Location = New Point(0, 230)
         }
         mainPanel.Controls.Add(sfxLabel)
 
@@ -100,30 +101,22 @@
                                                sfxLabel.Text = sfxSlider.Value & "%"
                                            End Sub
 
-        ' Back Button (in bottom panel)
-        Dim bottomPanel As New Panel() With {
-            .Dock = DockStyle.Bottom,
-            .Height = 50,
-            .BackColor = Color.FromArgb(230, 230, 230)
-        }
-        Me.Controls.Add(bottomPanel)
-
-        backButton = New Button() With {
-            .Text = "Back to Menu",
+        Dim backButton As New Button() With {
+            .Text = "BACK TO MENU",
             .FlatStyle = FlatStyle.Flat,
             .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
             .BackColor = Color.FromArgb(24, 24, 30),
             .ForeColor = Color.White,
-            .Size = New Size(150, 40),
-            .Location = New Point((bottomPanel.Width - 150) \ 2, 5)
+            .Size = New Size(180, 42),
+            .Location = New Point(110, 290)
         }
         backButton.FlatAppearance.BorderSize = 0
-        AddHandler backButton.Click, AddressOf BackButton_Click
-        bottomPanel.Controls.Add(backButton)
+        AddHandler backButton.Click, Sub(s, e)
+                                         AudioManager.PlaySfx("Audio\SFX\Button_Plate_Click.mp3")
+                                         Me.DialogResult = DialogResult.OK
+                                         Me.Close()
+                                     End Sub
+        mainPanel.Controls.Add(backButton)
     End Sub
 
-    Private Sub BackButton_Click(sender As Object, e As EventArgs)
-        Me.DialogResult = DialogResult.OK
-        Me.Close()
-    End Sub
 End Class

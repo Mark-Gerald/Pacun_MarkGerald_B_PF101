@@ -48,6 +48,7 @@
     <OptionInfer>On</OptionInfer>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="PresentationCore" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
@@ -58,6 +59,7 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Net.Http" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Import Include="Microsoft.VisualBasic" />
@@ -77,6 +79,7 @@
       <DependentUpon>AnimalSystem.vb</DependentUpon>
     </Compile>
     <Compile Include="AnimalSystem.vb" />
+    <Compile Include="AudioManager.vb" />
     <Compile Include="BankAccount.Designer.vb">
       <DependentUpon>BankAccount.vb</DependentUpon>
     </Compile>
@@ -248,7 +251,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Assets\Audio\Music\Wet Hands.mp3" />
+    <Content Include="Assets\Audio\Music\Wet_Hands.mp3" />
     <Content Include="Assets\Audio\SFX\Ambience_Music.mp3" />
     <Content Include="Assets\Audio\SFX\Button_Plate_Click.mp3" />
     <Content Include="Assets\Audio\SFX\Canoe_Paddle_Sound_Effect.mp3" />
@@ -259,6 +262,7 @@
     <Content Include="Assets\Character\character-Sheet.png" />
     <Content Include="Assets\enemies\enemy_fly-Sheet.png" />
     <Content Include="Assets\enemies\ground_enemy-Sheet.png" />
+    <Content Include="Assets\enviroment\Boat.png" />
     <Content Include="Assets\enviroment\carrot.png" />
     <Content Include="Assets\enviroment\coin-Sheet.png" />
     <Content Include="Assets\enviroment\glow_carrot.png" />
