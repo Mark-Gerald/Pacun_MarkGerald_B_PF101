@@ -391,28 +391,42 @@ Public Class JumpKnightPanel
         g.DrawArc(slashPenInner, cx - r3, cy - r3, r3 * 2.0F, r3 * 2.0F, startAngle, sweepAngle)
     End Sub
 
+
     Private Sub DrawImpacts(g As Graphics)
         For Each imp As JKImpact In engine.Impacts
             Dim sx As Single = imp.X
-            Dim sy As Single = sy(imp.Y)
-            If sy > JumpKnightEngine.ViewH + 40 OrElse sy < -40 Then Continue For
+            Dim screenY As Single = SY(imp.Y)
+
+            If screenY > JumpKnightEngine.ViewH + 40 OrElse screenY < -40 Then Continue For
+
             Dim a As Single = imp.Age
 
             ' Spark burst
             If a < 0.3F Then
                 Dim r1 As Single = 6.0F + a * 90.0F
                 Dim r2 As Single = r1 + 9.0F * (1.0F - a / 0.3F)
+
                 For i As Integer = 0 To 7
                     Dim ang As Double = i * Math.PI / 4.0
+
                     g.DrawLine(sparkPen,
-                               sx + CSng(Math.Cos(ang)) * r1, sy + CSng(Math.Sin(ang)) * r1,
-                               sx + CSng(Math.Cos(ang)) * r2, sy + CSng(Math.Sin(ang)) * r2)
+                           sx + CSng(Math.Cos(ang)) * r1,
+                           screenY + CSng(Math.Sin(ang)) * r1,
+                           sx + CSng(Math.Cos(ang)) * r2,
+                           screenY + CSng(Math.Sin(ang)) * r2)
                 Next
             End If
 
             ' Floating points
             If a < 0.5F Then
-                DrawShadowText(g, "+" & JumpKnightEngine.BatPoints.ToString(), smallFont, goldBrush, sx - 12.0F, sy - 26.0F - a * 40.0F)
+                DrawShadowText(
+                g,
+                "+" & JumpKnightEngine.BatPoints.ToString(),
+                smallFont,
+                goldBrush,
+                sx - 12.0F,
+                screenY - 26.0F - a * 40.0F
+            )
             End If
         Next
     End Sub
