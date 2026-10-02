@@ -16,18 +16,26 @@ Public Class Level1GameplayForm
     Private currentBank As String = "Right"
     Private moveCount As Integer = 0
     Private hasWon As Boolean = False
-    Private isAnimating As Boolean = False
+
+    ' Movement State for walking to/from boat
+    Private isMoving As Boolean = False
+    Private movementTimer As Timer
+    Private movingCharacter As CharacterState
+    Private movementWaypoints As New Queue(Of Point)
+    Private isMovingToBoat As Boolean = False
 
     Private characterIcons As New Dictionary(Of CharacterState, SpritePanel)
     Private boatIcon As SpritePanel
-
     Private crossTimer As Timer
+
     Private crossStartX As Integer
     Private crossEndX As Integer
     Private crossStep As Integer
     Private Const CrossSteps As Integer = 24
     Private crossingPassengers As New List(Of CharacterState)
     Private crossingToBank As String = ""
+
+    Private Const CharacterSize As Integer = 72
 
     Public Sub New()
         Me.Text = "Level 1 " & ChrW(8212) & " River Crossing"
@@ -44,7 +52,7 @@ Public Class Level1GameplayForm
     End Sub
 
     ' ==================================================
-    ' LAYOUT
+    ' LAYOUT (Task 6: Redesigned Controls)
     ' ==================================================
     Private Sub BuildLayout()
         Dim topPanel As New Panel() With {.Dock = DockStyle.Top, .Height = 64, .BackColor = Color.FromArgb(24, 24, 30)}
@@ -71,60 +79,63 @@ Public Class Level1GameplayForm
         gamePanel = New GameScenePanel() With {.Dock = DockStyle.Fill}
         Me.Controls.Add(gamePanel)
 
-        Dim bottomPanel As New Panel() With {.Dock = DockStyle.Bottom, .Height = 84, .BackColor = Color.FromArgb(245, 245, 245)}
-        Me.Controls.Add(bottomPanel)
+        ' Themed control bar instead of white panel
+        Dim controlPanel As New Panel() With {
+            .Dock = DockStyle.Bottom,
+            .Height = 70,
+            .BackColor = Color.FromArgb(24, 24, 30) ' Dark theme matching menu
+        }
+        Me.Controls.Add(controlPanel)
 
         moveCountLabel = New Label() With {
             .Text = "Moves: 0",
             .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
-            .ForeColor = Color.FromArgb(40, 40, 40),
+            .ForeColor = Color.White,
             .AutoSize = True,
-            .Location = New Point(16, 10)
+            .Location = New Point(16, 25)
         }
-        bottomPanel.Controls.Add(moveCountLabel)
+        controlPanel.Controls.Add(moveCountLabel)
 
         crossButton = New Button() With {
             .Text = "Cross River",
             .Font = New Font("Segoe UI", 9.5F, FontStyle.Bold),
             .FlatStyle = FlatStyle.Flat,
-            .BackColor = Color.FromArgb(24, 24, 30),
+            .BackColor = Color.FromArgb(76, 175, 80), ' Themed green
             .ForeColor = Color.White,
             .Size = New Size(140, 36),
-            .Location = New Point(16, 40)
+            .Location = New Point(120, 17)
         }
         crossButton.FlatAppearance.BorderSize = 0
         AddHandler crossButton.Click, AddressOf CrossButton_Click
-        bottomPanel.Controls.Add(crossButton)
+        controlPanel.Controls.Add(crossButton)
 
         resetButton = New Button() With {
             .Text = "Reset",
             .Font = New Font("Segoe UI", 9.5F),
             .FlatStyle = FlatStyle.Flat,
-            .BackColor = Color.White,
-            .ForeColor = Color.Black,
+            .BackColor = Color.FromArgb(66, 133, 200), ' Themed blue
+            .ForeColor = Color.White,
             .Size = New Size(100, 36),
-            .Location = New Point(166, 40)
+            .Location = New Point(270, 17)
         }
-        resetButton.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200)
-        resetButton.FlatAppearance.BorderSize = 1
+        resetButton.FlatAppearance.BorderSize = 0
         AddHandler resetButton.Click, AddressOf ResetButton_Click
-        bottomPanel.Controls.Add(resetButton)
+        controlPanel.Controls.Add(resetButton)
 
         backButton = New Button() With {
             .Text = ChrW(8592) & " Back to Menu",
             .Font = New Font("Segoe UI", 9.5F),
             .FlatStyle = FlatStyle.Flat,
-            .BackColor = Color.White,
-            .ForeColor = Color.Black,
+            .BackColor = Color.FromArgb(150, 90, 190), ' Themed purple
+            .ForeColor = Color.White,
             .Size = New Size(150, 36)
         }
-        backButton.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200)
-        backButton.FlatAppearance.BorderSize = 1
+        backButton.FlatAppearance.BorderSize = 0
         AddHandler backButton.Click, AddressOf BackButton_Click
-        bottomPanel.Controls.Add(backButton)
+        controlPanel.Controls.Add(backButton)
 
-        Dim positionBackButton As Action = Sub() backButton.Location = New Point(bottomPanel.Width - backButton.Width - 16, 40)
-        AddHandler bottomPanel.Resize, Sub(s, e) positionBackButton()
+        Dim positionBackButton As Action = Sub() backButton.Location = New Point(controlPanel.Width - backButton.Width - 16, 17)
+        AddHandler controlPanel.Resize, Sub(s, e) positionBackButton()
         positionBackButton()
     End Sub
 
@@ -136,6 +147,11 @@ Public Class Level1GameplayForm
             crossTimer.Stop()
             crossTimer.Dispose()
             crossTimer = Nothing
+        End If
+        If movementTimer IsNot Nothing Then
+            movementTimer.Stop()
+            movementTimer.Dispose()
+            movementTimer = Nothing
         End If
 
         characters = New List(Of CharacterState) From {
@@ -150,9 +166,10 @@ Public Class Level1GameplayForm
         currentBank = "Right"
         moveCount = 0
         hasWon = False
-        isAnimating = False
+        isMoving = False
+        movingCharacter = Nothing
 
-        ' Remove old sprite controls so a Reset starts completely clean.
+        ' Remove old sprite controls
         If characterIcons.Count > 0 Then
             For Each kv In characterIcons
                 kv.Value.StopAnimationTimer()
@@ -185,11 +202,16 @@ Public Class Level1GameplayForm
                 Dim icon As New SpritePanel()
                 If ch.Type = "Innocent" Then
                     Dim idleFrames As Image() = GameAssets.GetTrimmedAnimation("Character\Farmer-Idle.png", GameAssets.FarmerIdleFrameCount, 0, GameAssets.FarmerIdleFrameW, GameAssets.FarmerIdleFrameH)
-                    icon.SetAnimationFrames(idleFrames, 150)
+                    Dim walkFrames As Image() = GameAssets.GetTrimmedAnimation("Character\Farmer-Walk.png", 4, 0, GameAssets.FarmerWalkFrameW, GameAssets.FarmerWalkFrameH)
+                    If walkFrames Is Nothing OrElse walkFrames.Length = 0 OrElse walkFrames(0) Is Nothing Then
+                        walkFrames = idleFrames
+                    End If
+                    icon.SetAnimations(idleFrames, walkFrames, 150)
                     icon.AccentColor = Color.FromArgb(90, 160, 255)
                 Else
-                    Dim enemyFrames As Image() = GameAssets.GetTrimmedAnimation("enemies\ground_enemy-Sheet.png", GameAssets.EnemyFrameCount, 0, GameAssets.EnemyFrameW, GameAssets.EnemyFrameH)
-                    icon.SetAnimationFrames(enemyFrames, 150)
+                    Dim idleFrames As Image() = GameAssets.GetTrimmedAnimation("enemies\ground_enemy-Sheet.png", 1, 0, GameAssets.EnemyFrameW, GameAssets.EnemyFrameH)
+                    Dim walkFrames As Image() = GameAssets.GetTrimmedAnimation("enemies\ground_enemy-Sheet.png", GameAssets.EnemyFrameCount, 0, GameAssets.EnemyFrameW, GameAssets.EnemyFrameH)
+                    icon.SetAnimations(idleFrames, walkFrames, 150)
                     icon.AccentColor = Color.FromArgb(230, 90, 90)
                 End If
                 Dim capturedCh As CharacterState = ch
@@ -201,17 +223,16 @@ Public Class Level1GameplayForm
     End Sub
 
     ' ==================================================
-    ' RENDERING (positions only -- visuals always reflect game state)
+    ' RENDERING (Task 2: Fixed Character Size)
     ' ==================================================
     Private Sub RefreshCharacterLayout()
-        If isAnimating Then Return
         If gamePanel.Width <= 0 OrElse gamePanel.Height <= 0 Then Return
 
         Dim leftRect As Rectangle = gamePanel.LeftBankRect
         Dim rightRect As Rectangle = gamePanel.RightBankRect
         Dim riverRect As Rectangle = gamePanel.RiverRect
 
-        Dim iconSize As Integer = 72
+        Dim iconSize As Integer = CharacterSize
         Dim perRow As Integer = Math.Max(1, (leftRect.Width - 16) \ (iconSize + 10))
 
         Dim boatW As Integer = 120
@@ -220,7 +241,8 @@ Public Class Level1GameplayForm
         Dim boatY As Integer = riverRect.Top + Math.Max(0, (riverRect.Height - boatH) \ 2)
         boatIcon.Size = New Size(boatW, boatH)
         boatIcon.Location = New Point(boatX, boatY)
-        boatIcon.BringToFront()
+
+        boatIcon.SendToBack()
 
         Dim leftIndex As Integer = 0
         Dim rightIndex As Integer = 0
@@ -228,54 +250,237 @@ Public Class Level1GameplayForm
 
         For Each ch In characters
             Dim icon As SpritePanel = characterIcons(ch)
-            icon.IsSelected = selectedCharacters.Contains(ch)
 
-            If ch.OnBoat Then
-                icon.Size = New Size(50, 50)
-                icon.Location = New Point(boatX + 10 + boatPassengerIndex * 54, boatY + boatH - 56)
-                boatPassengerIndex += 1
-                icon.BringToFront()
-            ElseIf ch.Side = "Left" Then
-                Dim col As Integer = leftIndex Mod perRow
-                Dim row As Integer = leftIndex \ perRow
-                icon.Size = New Size(iconSize, iconSize)
-                icon.Location = New Point(leftRect.Left + 16 + col * (iconSize + 10), leftRect.Top + 16 + row * (iconSize + 10))
-                leftIndex += 1
-            Else
-                Dim col As Integer = rightIndex Mod perRow
-                Dim row As Integer = rightIndex \ perRow
-                icon.Size = New Size(iconSize, iconSize)
-                icon.Location = New Point(rightRect.Left + 16 + col * (iconSize + 10), rightRect.Top + 16 + row * (iconSize + 10))
-                rightIndex += 1
+            If ch IsNot movingCharacter Then
+                icon.IsOnBoat = ch.OnBoat
+                icon.IsWalking = False
+                icon.Size = New Size(CharacterSize, CharacterSize) ' Consistent size
+
+                If ch.OnBoat Then
+                    Dim passengerY As Integer = boatY + (boatH - icon.Height) \ 2
+                    icon.Location = New Point(boatX + 10 + boatPassengerIndex * 54, passengerY)
+                    boatPassengerIndex += 1
+                    icon.BringToFront()
+                ElseIf ch.Side = "Left" Then
+                    Dim col As Integer = leftIndex Mod perRow
+                    Dim row As Integer = leftIndex \ perRow
+                    icon.Location = New Point(leftRect.Left + 16 + col * (iconSize + 10), leftRect.Top + 16 + row * (iconSize + 10))
+                    ch.HomeLocation = icon.Location
+                    leftIndex += 1
+                Else
+                    Dim col As Integer = rightIndex Mod perRow
+                    Dim row As Integer = rightIndex \ perRow
+                    icon.Location = New Point(rightRect.Left + 16 + col * (iconSize + 10), rightRect.Top + 16 + row * (iconSize + 10))
+                    ch.HomeLocation = icon.Location
+                    rightIndex += 1
+                End If
             End If
         Next
     End Sub
 
     ' ==================================================
-    ' SELECTION
+    ' SELECTION & MOVEMENT (Tasks 3, 4, 5)
     ' ==================================================
     Private Sub CharacterIcon_Click(ch As CharacterState)
-        If isAnimating OrElse hasWon Then Return
-        If ch.OnBoat Then Return
-        If ch.Side <> currentBank Then Return
+        If isMoving OrElse hasWon Then Return
+        If ch.Side <> currentBank AndAlso Not ch.OnBoat Then Return
 
-        If selectedCharacters.Contains(ch) Then
+        If ch.OnBoat Then
             selectedCharacters.Remove(ch)
-            SetStatus("Passenger deselected.")
-        Else
+            StartCharacterMovement(ch, False)
+            Return
+        End If
+
+        If Not selectedCharacters.Contains(ch) Then
             If selectedCharacters.Count >= 2 Then
                 SetStatus("The boat can only carry up to 2 passengers.")
                 Return
             End If
             selectedCharacters.Add(ch)
-            SetStatus("Passenger selected. Select up to 2, then click Cross River.")
+            StartCharacterMovement(ch, True)
+        End If
+    End Sub
+
+    Private Sub StartCharacterMovement(ch As CharacterState, toBoat As Boolean)
+        isMoving = True
+        isMovingToBoat = toBoat
+        movingCharacter = ch
+        movementWaypoints.Clear()
+
+        Dim targetX As Integer
+        Dim targetY As Integer
+
+        If toBoat Then
+            targetX = boatIcon.Location.X + 10 + (selectedCharacters.IndexOf(ch) * 54)
+            targetY = boatIcon.Location.Y + (boatIcon.Height - CharacterSize) \ 2
+        Else
+            targetX = ch.HomeLocation.X
+            targetY = ch.HomeLocation.Y
         End If
 
-        RefreshCharacterLayout()
+        ' Task 5: Fix walking route to avoid water
+        Dim startPos = characterIcons(ch).Location
+        Dim riverRect = gamePanel.RiverRect
+        Dim bankEdgeX As Integer = If(ch.Side = "Left", riverRect.Left - CharacterSize, riverRect.Right)
+
+        ' Move horizontally to bank edge, then vertically, then horizontally to target
+        movementWaypoints.Enqueue(New Point(bankEdgeX, startPos.Y))
+        movementWaypoints.Enqueue(New Point(bankEdgeX, targetY))
+        movementWaypoints.Enqueue(New Point(targetX, targetY))
+
+        Dim icon = characterIcons(ch)
+        icon.IsWalking = True
+        icon.Size = New Size(CharacterSize, CharacterSize) ' Task 2: Keep size consistent
+
+        movementTimer = New Timer() With {.Interval = 20}
+        AddHandler movementTimer.Tick, AddressOf MovementTimer_Tick
+        movementTimer.Start()
+
+        SetStatus(If(toBoat, "Passenger walking to boat...", "Passenger returning..."))
+    End Sub
+
+    Private Sub MovementTimer_Tick(sender As Object, e As EventArgs)
+        Dim currentIcon As SpritePanel = Nothing
+
+        If movementWaypoints.Count = 0 Then
+            movementTimer.Stop()
+            movementTimer.Dispose()
+            movementTimer = Nothing
+            isMoving = False
+
+            currentIcon = characterIcons(movingCharacter)
+            currentIcon.IsWalking = False
+
+            If isMovingToBoat Then
+                movingCharacter.OnBoat = True
+                currentIcon.IsOnBoat = True
+                SetStatus("Passenger boarded. Select another or click Cross River.")
+            Else
+                movingCharacter.OnBoat = False
+                currentIcon.IsOnBoat = False
+                SetStatus("Passenger returned to land.")
+            End If
+
+            movingCharacter = Nothing
+            RefreshCharacterLayout()
+            Return
+        End If
+
+        Dim target As Point = movementWaypoints.Peek()
+        currentIcon = characterIcons(movingCharacter)
+        Dim currentPos = currentIcon.Location
+
+        If target.X > currentPos.X Then
+            currentIcon.Facing = SpritePanel.FacingDirection.Right
+        ElseIf target.X < currentPos.X Then
+            currentIcon.Facing = SpritePanel.FacingDirection.Left
+        End If
+
+        ' Task 3: Double walking speed (step from 4 to 8)
+        Dim stepX As Integer = Math.Sign(target.X - currentPos.X) * 8
+        Dim stepY As Integer = Math.Sign(target.Y - currentPos.Y) * 8
+
+        Dim newX As Integer = currentPos.X + stepX
+        Dim newY As Integer = currentPos.Y + stepY
+
+        If Math.Abs(target.X - currentPos.X) <= 8 Then newX = target.X
+        If Math.Abs(target.Y - currentPos.Y) <= 8 Then newY = target.Y
+
+        currentIcon.Location = New Point(newX, newY)
+
+        If newX = target.X AndAlso newY = target.Y Then
+            movementWaypoints.Dequeue()
+        End If
     End Sub
 
     ' ==================================================
-    ' MOVE VALIDATION (classic rule, unchanged)
+    ' CROSSING (Task 4: Walk after crossing)
+    ' ==================================================
+    Private Sub CrossButton_Click(sender As Object, e As EventArgs)
+        If isMoving OrElse hasWon Then Return
+
+        If selectedCharacters.Count = 0 Then
+            SetStatus("Select at least one passenger before crossing.")
+            Return
+        End If
+
+        If Not IsLegalMove() Then
+            AudioManager.PlaySfx("Audio\SFX\Nope_Invalid_Move.mp3")
+            SetStatus("Invalid move " & ChrW(8212) & " monsters would outnumber innocents on a bank.")
+            Return
+        End If
+
+        StartCrossingAnimation()
+    End Sub
+
+    Private Sub StartCrossingAnimation()
+        Dim crossingPassengersList As New List(Of CharacterState)(selectedCharacters)
+        Dim toBank As String = If(currentBank = "Right", "Left", "Right")
+
+        Dim riverRect As Rectangle = gamePanel.RiverRect
+        crossStartX = boatIcon.Location.X
+        crossEndX = If(toBank = "Left", riverRect.Left + 8, riverRect.Right - boatIcon.Width - 8)
+        crossStep = 0
+
+        AudioManager.PlaySfx("Audio\SFX\Canoe_Paddle_Sound_Effect.mp3")
+        SetStatus("Crossing the river...")
+
+        crossTimer = New Timer() With {.Interval = 30}
+        AddHandler crossTimer.Tick, Sub(s, e)
+                                        crossStep += 1
+                                        Dim progress As Single = crossStep / CSng(CrossSteps)
+                                        Dim newX As Integer = CInt(crossStartX + (crossEndX - crossStartX) * progress)
+                                        boatIcon.Location = New Point(newX, boatIcon.Location.Y)
+
+                                        Dim passengerIndex As Integer = 0
+                                        For Each ch In crossingPassengersList
+                                            Dim icon As SpritePanel = characterIcons(ch)
+                                            Dim passengerY As Integer = boatIcon.Location.Y + (boatIcon.Height - icon.Height) \ 2
+                                            icon.Location = New Point(newX + 10 + passengerIndex * 54, passengerY)
+
+                                            icon.IsWalking = True
+                                            icon.Facing = If(crossEndX > crossStartX, SpritePanel.FacingDirection.Right, SpritePanel.FacingDirection.Left)
+                                            passengerIndex += 1
+                                        Next
+
+                                        If crossStep >= CrossSteps Then
+                                            crossTimer.Stop()
+                                            crossTimer.Dispose()
+                                            crossTimer = Nothing
+
+                                            For Each ch In crossingPassengersList
+                                                ch.OnBoat = False
+                                                ch.Side = toBank
+                                                Dim icon As SpritePanel = characterIcons(ch)
+                                                icon.IsWalking = False
+                                                icon.IsOnBoat = False
+                                                icon.Facing = SpritePanel.FacingDirection.Right
+                                            Next
+
+                                            currentBank = toBank
+                                            moveCount += 1
+                                            selectedCharacters.Clear()
+                                            crossingPassengersList.Clear()
+                                            UpdateMoveCount()
+
+                                            If CheckWinCondition() Then
+                                                hasWon = True
+                                                crossButton.Enabled = False
+                                                AudioManager.PlaySfx("Audio\SFX\Victory_Jingle.mp3")
+                                                SetStatus("Victory! All characters reached the other side in " & moveCount & " move(s).")
+                                                RefreshCharacterLayout()
+                                                MessageBox.Show("All characters crossed safely!" & vbCrLf & "Moves used: " & moveCount, "Victory", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                                            Else
+                                                SetStatus("Crossing complete. Select the next passengers.")
+                                                RefreshCharacterLayout()
+                                            End If
+                                        End If
+                                    End Sub
+        crossTimer.Start()
+    End Sub
+
+    ' ==================================================
+    ' MOVE VALIDATION
     ' ==================================================
     Private Function IsLegalMove() As Boolean
         For Each ch In selectedCharacters
@@ -334,97 +539,6 @@ Public Class Level1GameplayForm
     End Function
 
     ' ==================================================
-    ' CROSSING (timer-based animation, not instant teleport)
-    ' ==================================================
-    Private Sub CrossButton_Click(sender As Object, e As EventArgs)
-        If isAnimating OrElse hasWon Then Return
-
-        If selectedCharacters.Count = 0 Then
-            SetStatus("Select at least one passenger before crossing.")
-            Return
-        End If
-
-        If Not IsLegalMove() Then
-            AudioManager.PlaySfx("Audio\SFX\Nope_Invalid_Move.mp3")
-            SetStatus("Invalid move " & ChrW(8212) & " monsters would outnumber innocents on a bank.")
-            Return
-        End If
-
-        StartCrossingAnimation()
-    End Sub
-
-    Private Sub StartCrossingAnimation()
-        isAnimating = True
-        crossButton.Enabled = False
-
-        crossingPassengers = New List(Of CharacterState)(selectedCharacters)
-        crossingToBank = If(currentBank = "Right", "Left", "Right")
-
-        For Each ch In crossingPassengers
-            ch.OnBoat = True
-        Next
-
-        Dim riverRect As Rectangle = gamePanel.RiverRect
-        crossStartX = boatIcon.Location.X
-        crossEndX = If(crossingToBank = "Left", riverRect.Left + 8, riverRect.Right - boatIcon.Width - 8)
-        crossStep = 0
-
-        AudioManager.PlaySfx("Audio\SFX\Canoe_Paddle_Sound_Effect.mp3")
-        SetStatus("Crossing the river...")
-
-        crossTimer = New Timer() With {.Interval = 30}
-        AddHandler crossTimer.Tick, AddressOf CrossTimer_Tick
-        crossTimer.Start()
-    End Sub
-
-    Private Sub CrossTimer_Tick(sender As Object, e As EventArgs)
-        crossStep += 1
-        Dim progress As Single = crossStep / CSng(CrossSteps)
-        Dim newX As Integer = CInt(crossStartX + (crossEndX - crossStartX) * progress)
-        boatIcon.Location = New Point(newX, boatIcon.Location.Y)
-
-        Dim passengerIndex As Integer = 0
-        For Each ch In crossingPassengers
-            Dim icon As SpritePanel = characterIcons(ch)
-            icon.Location = New Point(newX + 8 + passengerIndex * 38, boatIcon.Location.Y + boatIcon.Height - 40)
-            passengerIndex += 1
-        Next
-
-        If crossStep >= CrossSteps Then
-            crossTimer.Stop()
-            crossTimer.Dispose()
-            crossTimer = Nothing
-            CompleteCrossing()
-        End If
-    End Sub
-
-    Private Sub CompleteCrossing()
-        For Each ch In crossingPassengers
-            ch.OnBoat = False
-            ch.Side = crossingToBank
-        Next
-        currentBank = crossingToBank
-        moveCount += 1
-        selectedCharacters.Clear()
-        crossingPassengers.Clear()
-        UpdateMoveCount()
-        isAnimating = False
-        crossButton.Enabled = True
-
-        If CheckWinCondition() Then
-            hasWon = True
-            crossButton.Enabled = False
-            AudioManager.PlaySfx("Audio\SFX\Victory_Jingle.mp3")
-            SetStatus("Victory! All characters reached the other side in " & moveCount & " move(s).")
-            RefreshCharacterLayout()
-            MessageBox.Show("All characters crossed safely!" & vbCrLf & "Moves used: " & moveCount, "Victory", MessageBoxButtons.OK, MessageBoxIcon.Information)
-        Else
-            SetStatus("Crossing complete. Select the next passengers.")
-            RefreshCharacterLayout()
-        End If
-    End Sub
-
-    ' ==================================================
     ' BUTTONS / NAVIGATION
     ' ==================================================
     Private Sub ResetButton_Click(sender As Object, e As EventArgs)
@@ -437,6 +551,11 @@ Public Class Level1GameplayForm
             crossTimer.Dispose()
             crossTimer = Nothing
         End If
+        If movementTimer IsNot Nothing Then
+            movementTimer.Stop()
+            movementTimer.Dispose()
+            movementTimer = Nothing
+        End If
         Me.Close()
     End Sub
 
@@ -446,6 +565,11 @@ Public Class Level1GameplayForm
             crossTimer.Stop()
             crossTimer.Dispose()
             crossTimer = Nothing
+        End If
+        If movementTimer IsNot Nothing Then
+            movementTimer.Stop()
+            movementTimer.Dispose()
+            movementTimer = Nothing
         End If
     End Sub
 
@@ -465,111 +589,16 @@ Public Class CharacterState
     Public Property Type As String
     Public Property Side As String
     Public Property OnBoat As Boolean
+    Public Property HomeLocation As Point ' Stores original position on land
 
     Public Sub New(nameValue As String, typeValue As String, sideValue As String)
         Name = nameValue
         Type = typeValue
         Side = sideValue
         OnBoat = False
+        HomeLocation = Point.Empty
     End Sub
 End Class
-
-''' <summary>
-''' A single sprite icon. Can show a static SpriteImage, or cycle through an
-''' array of frames (e.g., an idle animation) via SetAnimationFrames. Draws with
-''' nearest-neighbor scaling and an optional selection border.
-''' </summary>
-Public Class SpritePanel
-    Inherits Panel
-
-    Public Property SpriteImage As Image
-    Public Property IsSelected As Boolean = False
-    Public Property AccentColor As Color = Color.FromArgb(255, 215, 0)
-
-    Private animFrames As Image()
-    Private animIndex As Integer = 0
-    Private animTimer As Timer
-
-    Public Sub New()
-        Me.SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.UserPaint Or ControlStyles.OptimizedDoubleBuffer, True)
-        Me.BackColor = Color.Transparent
-        Me.Cursor = Cursors.Hand
-    End Sub
-
-    ''' <summary>
-    ''' Starts cycling through the given frames. Passing Nothing or an empty array
-    ''' stops any running animation and leaves SpriteImage as a static frame.
-    ''' Null entries inside the array (a frame that failed to load) are skipped.
-    ''' </summary>
-    Public Sub SetAnimationFrames(frames As Image(), intervalMs As Integer)
-        StopAnimationTimer()
-
-        If frames Is Nothing Then Return
-        Dim validFrames As Image() = frames.Where(Function(f) f IsNot Nothing).ToArray()
-        If validFrames.Length = 0 Then Return
-
-        animFrames = validFrames
-        animIndex = 0
-        SpriteImage = animFrames(0)
-
-        If animFrames.Length > 1 Then
-            animTimer = New Timer() With {.Interval = Math.Max(16, intervalMs)}
-            AddHandler animTimer.Tick, Sub(s, e)
-                                           animIndex = (animIndex + 1) Mod animFrames.Length
-                                           SpriteImage = animFrames(animIndex)
-                                           Me.Invalidate()
-                                       End Sub
-            animTimer.Start()
-        End If
-    End Sub
-
-    Public Sub StopAnimationTimer()
-        If animTimer IsNot Nothing Then
-            animTimer.Stop()
-            animTimer.Dispose()
-            animTimer = Nothing
-        End If
-        animFrames = Nothing
-    End Sub
-
-    Protected Overrides Sub Dispose(disposing As Boolean)
-        If disposing Then
-            StopAnimationTimer()
-        End If
-        MyBase.Dispose(disposing)
-    End Sub
-
-    Protected Overrides Sub OnPaint(e As PaintEventArgs)
-        Dim g = e.Graphics
-        g.InterpolationMode = Drawing2D.InterpolationMode.NearestNeighbor
-        g.PixelOffsetMode = Drawing2D.PixelOffsetMode.Half
-
-        If SpriteImage IsNot Nothing Then
-            Dim availW As Integer = Width - 4
-            Dim availH As Integer = Height - 4
-            Dim scale As Single = Math.Min(availW / CSng(SpriteImage.Width), availH / CSng(SpriteImage.Height))
-            Dim drawW As Integer = Math.Max(1, CInt(SpriteImage.Width * scale))
-            Dim drawH As Integer = Math.Max(1, CInt(SpriteImage.Height * scale))
-            Dim drawX As Integer = 2 + (availW - drawW) \ 2
-            Dim drawY As Integer = 2 + (availH - drawH) \ 2
-            g.DrawImage(SpriteImage, New Rectangle(drawX, drawY, drawW, drawH))
-        Else
-            Using b As New SolidBrush(Color.Gray)
-                g.FillRectangle(b, 2, 2, Width - 4, Height - 4)
-            End Using
-        End If
-
-        If IsSelected Then
-            Using pen As New Pen(AccentColor, 3)
-                g.DrawRectangle(pen, 1, 1, Width - 3, Height - 3)
-            End Using
-        End If
-
-        MyBase.OnPaint(e)
-    End Sub
-
-End Class
-
 
 ''' <summary>
 ''' Gameplay background: sky, two tiled grass/rock banks, and a tiled, vertically

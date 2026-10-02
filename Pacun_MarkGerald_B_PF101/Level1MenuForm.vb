@@ -1,4 +1,6 @@
-﻿Public Class Level1MenuForm
+﻿Imports System.Drawing.Drawing2D
+
+Public Class Level1MenuForm
     Inherits Form
 
     Private scenePanel As ScenePanel
@@ -6,6 +8,14 @@
     Private settingsButton As PixelButton
     Private nextGameButton As PixelButton
     Private exitButton As PixelButton
+
+    ' Settings Panel UI
+    Private settingsPanel As Panel
+    Private musicSlider As TrackBar
+    Private sfxSlider As TrackBar
+    Private musicLabel As Label
+    Private sfxLabel As Label
+    Private backSettingsButton As Button
 
     Private isTransitioning As Boolean = False
 
@@ -20,6 +30,7 @@
         Me.Controls.Add(scenePanel)
 
         BuildButtons()
+        BuildSettingsPanel()
         PositionButtons()
         AddHandler scenePanel.Resize, Sub(s, ev) PositionButtons()
 
@@ -44,6 +55,120 @@
         Next
     End Sub
 
+    Private Sub BuildSettingsPanel()
+        settingsPanel = New Panel() With {
+            .Size = New Size(500, 480),
+            .BackColor = Color.FromArgb(26, 26, 36),
+            .Visible = False
+        }
+        Me.Controls.Add(settingsPanel)
+        settingsPanel.BringToFront()
+
+        AddHandler settingsPanel.Paint, Sub(s, pe)
+                                            Dim r = settingsPanel.ClientRectangle
+                                            r = New Rectangle(r.X, r.Y, r.Width - 1, r.Height - 1)
+                                            pe.Graphics.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
+                                            Using pen As New Pen(Color.FromArgb(218, 165, 32), 2)
+                                                pe.Graphics.DrawRectangle(pen, r)
+                                            End Using
+                                        End Sub
+
+        Dim titleLabel As New Label() With {
+            .Text = "SETTINGS",
+            .Font = New Font("Segoe UI", 22.0F, FontStyle.Bold),
+            .ForeColor = Color.White,
+            .Dock = DockStyle.Top,
+            .Height = 70,
+            .TextAlign = ContentAlignment.MiddleCenter
+        }
+        settingsPanel.Controls.Add(titleLabel)
+
+        Dim mainPanel As New Panel() With {
+            .Dock = DockStyle.Fill,
+            .Padding = New Padding(40, 10, 40, 20),
+            .BackColor = Color.FromArgb(26, 26, 36)
+        }
+        settingsPanel.Controls.Add(mainPanel)
+        mainPanel.BringToFront()
+
+        Dim musicCaption As New Label() With {
+            .Text = "BACKGROUND MUSIC",
+            .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
+            .ForeColor = Color.White,
+            .AutoSize = True,
+            .Location = New Point(0, 10)
+        }
+        mainPanel.Controls.Add(musicCaption)
+
+        musicLabel = New Label() With {
+            .Text = GameSettings.GetInstance().MusicVolume & "%",
+            .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
+            .ForeColor = Color.FromArgb(218, 165, 32),
+            .AutoSize = True,
+            .Location = New Point(300, 10)
+        }
+        mainPanel.Controls.Add(musicLabel)
+
+        musicSlider = New TrackBar() With {
+            .Minimum = 0, .Maximum = 100,
+            .Value = GameSettings.GetInstance().MusicVolume,
+            .Location = New Point(0, 40),
+            .Width = 400, .TickFrequency = 10
+        }
+        mainPanel.Controls.Add(musicSlider)
+
+        AddHandler musicSlider.ValueChanged, Sub(s, e)
+                                                 GameSettings.GetInstance().MusicVolume = musicSlider.Value
+                                                 musicLabel.Text = musicSlider.Value & "%"
+                                                 AudioManager.ApplyMusicVolume()
+                                             End Sub
+
+        Dim sfxCaption As New Label() With {
+            .Text = "SOUND EFFECTS",
+            .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
+            .ForeColor = Color.White,
+            .AutoSize = True, .Location = New Point(0, 100)
+        }
+        mainPanel.Controls.Add(sfxCaption)
+
+        sfxLabel = New Label() With {
+            .Text = GameSettings.GetInstance().SfxVolume & "%",
+            .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
+            .ForeColor = Color.FromArgb(218, 165, 32),
+            .AutoSize = True, .Location = New Point(300, 100)
+        }
+        mainPanel.Controls.Add(sfxLabel)
+
+        sfxSlider = New TrackBar() With {
+            .Minimum = 0, .Maximum = 100,
+            .Value = GameSettings.GetInstance().SfxVolume,
+            .Location = New Point(0, 130),
+            .Width = 400, .TickFrequency = 10
+        }
+        mainPanel.Controls.Add(sfxSlider)
+
+        AddHandler sfxSlider.ValueChanged, Sub(s, e)
+                                               GameSettings.GetInstance().SfxVolume = sfxSlider.Value
+                                               sfxLabel.Text = sfxSlider.Value & "%"
+                                           End Sub
+
+        backSettingsButton = New Button() With {
+            .Text = "BACK",
+            .FlatStyle = FlatStyle.Flat,
+            .Font = New Font("Segoe UI", 11.0F, FontStyle.Bold),
+            .BackColor = Color.FromArgb(180, 50, 50),
+            .ForeColor = Color.White,
+            .Size = New Size(180, 45),
+            .Location = New Point(110, 220)
+        }
+        backSettingsButton.FlatAppearance.BorderSize = 0
+        AddHandler backSettingsButton.Click, Sub(s, e)
+                                                 AudioManager.PlaySfx("Audio\SFX\Button_Plate_Click.mp3")
+                                                 FadeSettingsOut()
+                                             End Sub
+        mainPanel.Controls.Add(backSettingsButton)
+    End Sub
+
     Private Sub PositionButtons()
         Dim btnWidth As Integer = 220
         Dim btnHeight As Integer = 52
@@ -57,6 +182,49 @@
             btn.Size = New Size(btnWidth, btnHeight)
             btn.Location = New Point(x, startY + i * (btnHeight + gap))
         Next
+    End Sub
+
+    Private Sub SettingsButton_Click(sender As Object, e As EventArgs)
+        FadeSettingsIn()
+    End Sub
+
+    Private Sub FadeSettingsIn()
+        settingsPanel.Location = New Point((Me.ClientSize.Width - settingsPanel.Width) \ 2, (Me.ClientSize.Height - settingsPanel.Height) \ 2)
+        settingsPanel.Visible = True
+        settingsPanel.BringToFront()
+
+        Dim fadeTimer As New Timer() With {.Interval = 15}
+        Dim targetOpacity As Double = 1.0
+        Dim currentOpacity As Double = 0.0
+
+        AddHandler fadeTimer.Tick, Sub(s, e)
+                                       currentOpacity += 0.1
+                                       If currentOpacity >= targetOpacity Then
+                                           currentOpacity = targetOpacity
+                                           fadeTimer.Stop()
+                                           fadeTimer.Dispose()
+                                       End If
+                                       Me.Opacity = currentOpacity
+                                   End Sub
+        fadeTimer.Start()
+    End Sub
+
+    Private Sub FadeSettingsOut()
+        Dim fadeTimer As New Timer() With {.Interval = 15}
+        Dim targetOpacity As Double = 0.0
+        Dim currentOpacity As Double = 1.0
+
+        AddHandler fadeTimer.Tick, Sub(s, e)
+                                       currentOpacity -= 0.1
+                                       If currentOpacity <= targetOpacity Then
+                                           currentOpacity = targetOpacity
+                                           fadeTimer.Stop()
+                                           fadeTimer.Dispose()
+                                           settingsPanel.Visible = False
+                                       End If
+                                       Me.Opacity = currentOpacity
+                                   End Sub
+        fadeTimer.Start()
     End Sub
 
     Private Sub StartButton_Click(sender As Object, e As EventArgs)
@@ -80,18 +248,9 @@
                           End Sub)
     End Sub
 
-    Private Sub SettingsButton_Click(sender As Object, e As EventArgs)
-        Using settingsForm As New Level1SettingsForm()
-            settingsForm.ShowDialog(Me)
-        End Using
-        ' Settings changes apply live via GameSettings + AudioManager.ApplyMusicVolume(),
-        ' so nothing further needs to happen here.
-    End Sub
-
     Private Sub NextGameButton_Click(sender As Object, e As EventArgs)
         If isTransitioning Then Return
 
-        ' If Level 2 is already open (for example from the main menu), just bring it forward.
         If Level2MenuForm.IsOpen() Then
             Level2MenuForm.BringExistingToFront()
             Return
@@ -120,7 +279,6 @@
         Me.Close()
     End Sub
 
-    ' Simple, non-blocking fade using a Timer (avoids Thread.Sleep on the UI thread).
     Private Sub FadeOutThenAction(onFadeComplete As Action)
         Dim fadeTimer As New Timer() With {.Interval = 15}
         AddHandler fadeTimer.Tick, Sub(s, e)
@@ -136,7 +294,6 @@
 
     Private Sub Level1MenuForm_FormClosed(sender As Object, e As FormClosedEventArgs)
         scenePanel.StopAnimation()
-        ' Only fully shut down audio if nothing else in the Level 1 / Level 2 flow is still open.
         If Application.OpenForms.OfType(Of Level1GameplayForm)().Count() = 0 AndAlso
            Application.OpenForms.OfType(Of Level2MenuForm)().Count() = 0 Then
             AudioManager.ShutdownAll()
@@ -145,14 +302,6 @@
 
 End Class
 
-''' <summary>
-''' Pixel-art scene built from the real project assets: sky.png and sky_decor.png
-''' tiled/overlaid for the background, a grass tileset tiled for both banks, and
-''' water-Sheet.png tiled and horizontally scrolled for the river (see chat notes:
-''' water-Sheet.png appears to be one composite tile, not a multi-frame strip, so
-''' it is animated by scrolling rather than frame-cycling).
-''' All images are loaded once and disposed on StopAnimation(), never reloaded per frame.
-''' </summary>
 Public Class ScenePanel
     Inherits Panel
 
@@ -181,8 +330,6 @@ Public Class ScenePanel
         animTimer.Start()
     End Sub
 
-    ' Loads an image from Assets\<relativePath> into the given field, or leaves it
-    ' Nothing (and logs why) if the file is missing -- never crashes on a missing asset.
     Private Sub LoadAsset(relativePath As String, ByRef target As Image)
         Dim fullPath As String = IO.Path.Combine(AudioManager.AssetsRoot, relativePath)
         If IO.File.Exists(fullPath) Then
@@ -225,7 +372,6 @@ Public Class ScenePanel
         g.InterpolationMode = Drawing2D.InterpolationMode.NearestNeighbor
         g.PixelOffsetMode = Drawing2D.PixelOffsetMode.Half
 
-        ' --- Sky ---
         If skyTile IsNot Nothing Then
             TileImage(g, skyTile, New Rectangle(0, 0, w, h))
         Else
@@ -238,7 +384,6 @@ Public Class ScenePanel
             g.DrawImage(skyDecor, New Rectangle(w - skyDecor.Width - 16, 16, skyDecor.Width, skyDecor.Height))
         End If
 
-        ' --- River band ---
         Dim riverTop As Integer = CInt(h * 0.62)
         Dim riverHeight As Integer = CInt(h * 0.2)
         Dim riverRect As New Rectangle(0, riverTop, w, riverHeight)
@@ -251,7 +396,6 @@ Public Class ScenePanel
             End Using
         End If
 
-        ' --- Banks (grass/rock tileset above and below the river) ---
         Dim bankTop As Integer = CInt(h * 0.5)
         If bankTile IsNot Nothing Then
             TileImage(g, bankTile, New Rectangle(0, bankTop, w, riverTop - bankTop))
@@ -265,12 +409,10 @@ Public Class ScenePanel
             End Using
         End If
 
-        ' --- Dark translucent overlay so menu text/buttons stay readable ---
         Using overlay As New SolidBrush(Color.FromArgb(110, 10, 10, 20))
             g.FillRectangle(overlay, 0, 0, w, h)
         End Using
 
-        ' --- Title ---
         Using titleFont As New Font("Segoe UI", 34.0F, FontStyle.Bold)
             Dim titleText As String = "RIVER CROSSING"
             Dim titleSize = g.MeasureString(titleText, titleFont)
@@ -287,7 +429,6 @@ Public Class ScenePanel
         MyBase.OnPaint(e)
     End Sub
 
-    ' Tiles an image to fill a rectangle, clipped to that rectangle.
     Private Sub TileImage(g As Graphics, img As Image, area As Rectangle)
         If area.Width <= 0 OrElse area.Height <= 0 Then Return
         Dim oldClip = g.Clip
@@ -304,8 +445,6 @@ Public Class ScenePanel
         g.Clip = oldClip
     End Sub
 
-    ' Same as TileImage, but shifts the horizontal starting offset each frame to
-    ' produce a smooth scrolling-water effect from a single static tile.
     Private Sub TileImageScrolling(g As Graphics, img As Image, area As Rectangle, offsetX As Integer)
         If area.Width <= 0 OrElse area.Height <= 0 OrElse img.Width <= 0 Then Return
         Dim oldClip = g.Clip
@@ -325,11 +464,6 @@ Public Class ScenePanel
 
 End Class
 
-''' <summary>
-''' A pixel-art-styled button: flat fill, dark outline, subtle bottom shadow edge,
-''' and hover/pressed color shifts. Drawn manually so it doesn't look like a
-''' default WinForms Button.
-''' </summary>
 Public Class PixelButton
     Inherits Panel
 

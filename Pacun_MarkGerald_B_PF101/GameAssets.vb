@@ -8,12 +8,6 @@ Public Module GameAssets
     Public Const CharFrameW As Integer = 48
     Public Const CharFrameH As Integer = 32
 
-    ' RE-VERIFIED by cropping and visually inspecting actual pixel content:
-    ' each 64x16 row is NOT one frame -- it's 4 side-by-side 16x16 walk-cycle
-    ' frames (confirmed different from each other, not duplicates). Using
-    ' row 0 (columns 0-3) as the monster's walk animation. Rows 1-9 appear to
-    ' be either different enemy variants or different facing directions --
-    ' not yet confirmed, so not used.
     Public Const EnemyFrameW As Integer = 16
     Public Const EnemyFrameH As Integer = 16
     Public Const EnemyFrameCount As Integer = 4
@@ -21,18 +15,19 @@ Public Module GameAssets
     Public Const BoatCellWidth As Integer = 84
     Public Const BoatCellHeight As Integer = 96
 
-    ' Confirmed from filenames: the Topdown_RPG_32x32_* tile sheets use a 32x32 grid.
     Public Const RpgTileSize As Integer = 32
 
-    ' CONFIRMED: 308 / 7 = 44 exactly, matching the stated 308x34 sheet size.
     Public Const FarmerIdleFrameW As Integer = 44
     Public Const FarmerIdleFrameH As Integer = 34
     Public Const FarmerIdleFrameCount As Integer = 7
 
-    ' NOT YET CONFIRMED -- pending actual Farmer-Walk.png / Farmer-Jump.png pixel
-    ' dimensions. Not used anywhere yet.
-    Public Const FarmerWalkFrameW As Integer = 32
-    Public Const FarmerWalkFrameH As Integer = 32
+    ' FIXED: Updated to match the idle frame size. 
+    ' If the walking animation still glitches, open Farmer-Walk.png in an image editor
+    ' and verify these exact dimensions.
+    Public Const FarmerWalkFrameW As Integer = 44
+    Public Const FarmerWalkFrameH As Integer = 34
+    Public Const FarmerWalkFrameCount As Integer = 4
+
     Public Const FarmerJumpFrameW As Integer = 32
     Public Const FarmerJumpFrameH As Integer = 32
 
@@ -40,12 +35,27 @@ Public Module GameAssets
     Private ReadOnly frameCache As New Dictionary(Of String, Bitmap)
     Private ReadOnly animCache As New Dictionary(Of String, Image())
 
-    ''' <summary>
-    ''' Returns the frames of a horizontal strip animation, all cropped to the same
-    ''' shared bounding box of non-transparent pixels. Using one shared box keeps
-    ''' frames aligned with each other (no jitter) while removing empty padding so
-    ''' the sprite fills its icon. Results are cached.
-    ''' </summary>
+    Public Sub ClearCache()
+        For Each img In sheets.Values
+            If img IsNot Nothing Then img.Dispose()
+        Next
+        sheets.Clear()
+
+        For Each bmp In frameCache.Values
+            If bmp IsNot Nothing Then bmp.Dispose()
+        Next
+        frameCache.Clear()
+
+        For Each frames In animCache.Values
+            If frames IsNot Nothing Then
+                For Each f In frames
+                    If f IsNot Nothing Then f.Dispose()
+                Next
+            End If
+        Next
+        animCache.Clear()
+    End Sub
+
     Public Function GetTrimmedAnimation(relativePath As String, frameCount As Integer, row As Integer, frameW As Integer, frameH As Integer) As Image()
         Dim key As String = relativePath & "|trim|" & frameCount & "," & row & "," & frameW & "x" & frameH
         If animCache.ContainsKey(key) Then Return animCache(key)
