@@ -221,12 +221,13 @@ Public Class JumpKnightPanel
         Next
     End Sub
 
-    ''' <summary>Draws bmp exactly 'width' wide (keeping its aspect ratio), top edge at y.</summary>
+    ''' <summary>Draws bmp exactly 'width' wide (keeping its aspect ratio), top edge at y.
+    ''' The drawn width is the platform's collision width, so what you see is what you land on.</summary>
     Private Sub DrawPlatformSprite(g As Graphics, bmp As Bitmap, x As Integer, y As Integer, width As Single, fallback As Brush)
         If bmp IsNot Nothing Then
             Dim w As Integer = CInt(Math.Round(width))
             Dim h As Integer = Math.Max(1, CInt(Math.Round(bmp.Height * width / bmp.Width)))
-            g.DrawImage(bmp, New Rectangle(x, y, w, h), 0, 0, bmp.Width, bmp.Height, GraphicsUnit.Pixel, spriteAttr)
+            g.DrawImage(bmp, New Rectangle(x, y, w, h), 0, 0, bmp.Width, bmp.Height, GraphicsUnit.Pixel)
         Else
             g.FillRectangle(fallback, x, y, width, 14)
         End If
@@ -250,8 +251,8 @@ Public Class JumpKnightPanel
                 Dim sc As Single = p.Width / art.WoodLog.Width
                 Dim halfW As Integer = CInt(Math.Round(art.WoodLeft.Width * sc))
                 Dim hh As Integer = Math.Max(1, CInt(Math.Round(art.WoodLeft.Height * sc)))
-                g.DrawImage(art.WoodLeft, New Rectangle(x - drift, y + fall, halfW, hh), 0, 0, art.WoodLeft.Width, art.WoodLeft.Height, GraphicsUnit.Pixel, spriteAttr)
-                g.DrawImage(art.WoodRight, New Rectangle(x + halfW + drift, y + fall, halfW, hh), 0, 0, art.WoodRight.Width, art.WoodRight.Height, GraphicsUnit.Pixel, spriteAttr)
+                g.DrawImage(art.WoodLeft, New Rectangle(x - drift, y + fall, halfW, hh), 0, 0, art.WoodLeft.Width, art.WoodLeft.Height, GraphicsUnit.Pixel)
+                g.DrawImage(art.WoodRight, New Rectangle(x + halfW + drift, y + fall, halfW, hh), 0, 0, art.WoodRight.Width, art.WoodRight.Height, GraphicsUnit.Pixel)
             Else
                 g.FillRectangle(fallbackWood, x - drift, y + fall, CInt(p.Width / 2), 14)
                 g.FillRectangle(fallbackWood, x + CInt(p.Width / 2) + drift, y + fall, CInt(p.Width / 2), 14)

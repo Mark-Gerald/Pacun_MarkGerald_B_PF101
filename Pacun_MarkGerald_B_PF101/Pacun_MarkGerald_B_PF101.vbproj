@@ -151,12 +151,7 @@
     <Compile Include="Level2PlaceholderForm.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Level2SettingsForm.Designer.vb">
-      <DependentUpon>Level2SettingsForm.vb</DependentUpon>
-    </Compile>
-    <Compile Include="Level2SettingsForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Level2ScenePanel.vb" />
     <Compile Include="Level3PlaceholderForm.Designer.vb">
       <DependentUpon>Level3PlaceholderForm.vb</DependentUpon>
     </Compile>
@@ -285,14 +280,30 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Assets\Audio\Music\Wet_Hands.mp3" />
-    <Content Include="Assets\Audio\SFX\Ambience_Music.mp3" />
-    <Content Include="Assets\Audio\SFX\Button_Plate_Click.mp3" />
-    <Content Include="Assets\Audio\SFX\Canoe_Paddle_Sound_Effect.mp3" />
-    <Content Include="Assets\Audio\SFX\Failure_in_the_game_Sound_effect.mp3" />
-    <Content Include="Assets\Audio\SFX\Nope_Invalid_Move.mp3" />
-    <Content Include="Assets\Audio\SFX\Victory_Jingle.mp3" />
-    <Content Include="Assets\Audio\SFX\Walking_On_Wood_Sound_Effect.mp3" />
+    <Content Include="Assets\Audio\Music\Wet_Hands.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\SFX\Ambience_Music.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\SFX\Button_Plate_Click.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\SFX\Canoe_Paddle_Sound_Effect.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\SFX\Failure_in_the_game_Sound_effect.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\SFX\Nope_Invalid_Move.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\SFX\Victory_Jingle.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Audio\SFX\Walking_On_Wood_Sound_Effect.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\Character\Farmer-Idle.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

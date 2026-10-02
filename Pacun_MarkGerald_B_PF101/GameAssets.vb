@@ -8,8 +8,15 @@ Public Module GameAssets
     Public Const CharFrameW As Integer = 48
     Public Const CharFrameH As Integer = 32
 
-    Public Const EnemyFrameW As Integer = 64
-    Public Const EnemyFrameH As Integer = 64
+    ' RE-VERIFIED by cropping and visually inspecting actual pixel content:
+    ' each 64x16 row is NOT one frame -- it's 4 side-by-side 16x16 walk-cycle
+    ' frames (confirmed different from each other, not duplicates). Using
+    ' row 0 (columns 0-3) as the monster's walk animation. Rows 1-9 appear to
+    ' be either different enemy variants or different facing directions --
+    ' not yet confirmed, so not used.
+    Public Const EnemyFrameW As Integer = 16
+    Public Const EnemyFrameH As Integer = 16
+    Public Const EnemyFrameCount As Integer = 4
 
     Public Const BoatCellWidth As Integer = 84
     Public Const BoatCellHeight As Integer = 96
@@ -17,12 +24,13 @@ Public Module GameAssets
     ' Confirmed from filenames: the Topdown_RPG_32x32_* tile sheets use a 32x32 grid.
     Public Const RpgTileSize As Integer = 32
 
-    ' NOT YET CONFIRMED -- placeholders only, pending actual Farmer-*.png pixel
-    ' dimensions. Do not rely on these until updated; GetFrame() will safely
-    ' return Nothing (not crash) if these turn out to be wrong, since it checks
-    ' frame bounds against the real image size before cropping.
-    Public Const FarmerIdleFrameW As Integer = 32
-    Public Const FarmerIdleFrameH As Integer = 32
+    ' CONFIRMED: 308 / 7 = 44 exactly, matching the stated 308x34 sheet size.
+    Public Const FarmerIdleFrameW As Integer = 44
+    Public Const FarmerIdleFrameH As Integer = 34
+    Public Const FarmerIdleFrameCount As Integer = 7
+
+    ' NOT YET CONFIRMED -- pending actual Farmer-Walk.png / Farmer-Jump.png pixel
+    ' dimensions. Not used anywhere yet.
     Public Const FarmerWalkFrameW As Integer = 32
     Public Const FarmerWalkFrameH As Integer = 32
     Public Const FarmerJumpFrameW As Integer = 32

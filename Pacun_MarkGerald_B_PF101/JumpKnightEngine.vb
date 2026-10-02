@@ -91,8 +91,8 @@ Public Class JumpKnightEngine
     Private Const BatHitRadius As Single = 11.0F
 
     ' ---------- Platform generation ----------
-    Public Const StoneWidth As Single = 48.0F          ' was 64
-    Public Const WoodWidth As Single = 54.0F           ' was 72
+    Public Const StoneWidth As Single = 44.0F          ' was 64
+    Public Const WoodWidth As Single = 50.0F           ' was 72
     Private Const LandInset As Single = 4.0F           ' feet may overlap this much past the platform edge
     Private Const MinGap As Single = 62.0F
     Private Const MaxGapStart As Single = 100.0F
@@ -570,3 +570,4 @@ Public Class JumpKnightEngine
     End Sub
 
 End Class
+

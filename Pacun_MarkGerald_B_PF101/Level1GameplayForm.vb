@@ -153,7 +153,9 @@ Public Class Level1GameplayForm
         ' Remove old sprite controls so a Reset starts completely clean.
         If characterIcons.Count > 0 Then
             For Each kv In characterIcons
+                kv.Value.StopAnimationTimer()
                 gamePanel.Controls.Remove(kv.Value)
+                kv.Value.Dispose()
             Next
             characterIcons.Clear()
         End If
@@ -180,10 +182,18 @@ Public Class Level1GameplayForm
             If Not characterIcons.ContainsKey(ch) Then
                 Dim icon As New SpritePanel()
                 If ch.Type = "Innocent" Then
-                    icon.SpriteImage = GameAssets.GetFrame("Character\charater-Sheet.png", 0, 0, GameAssets.CharFrameW, GameAssets.CharFrameH)
+                    Dim idleFrames(GameAssets.FarmerIdleFrameCount - 1) As Image
+                    For i As Integer = 0 To GameAssets.FarmerIdleFrameCount - 1
+                        idleFrames(i) = GameAssets.GetFrame("Character\Farmer-Idle.png", i, 0, GameAssets.FarmerIdleFrameW, GameAssets.FarmerIdleFrameH)
+                    Next
+                    icon.SetAnimationFrames(idleFrames, 150)
                     icon.AccentColor = Color.FromArgb(90, 160, 255)
                 Else
-                    icon.SpriteImage = GameAssets.GetFrame("enemies\ground_enemy-Sheet.png", 0, 0, GameAssets.EnemyFrameW, GameAssets.EnemyFrameH)
+                    Dim enemyFrames(GameAssets.EnemyFrameCount - 1) As Image
+                    For i As Integer = 0 To GameAssets.EnemyFrameCount - 1
+                        enemyFrames(i) = GameAssets.GetFrame("enemies\ground_enemy-Sheet.png", i, 0, GameAssets.EnemyFrameW, GameAssets.EnemyFrameH)
+                    Next
+                    icon.SetAnimationFrames(enemyFrames, 150)
                     icon.AccentColor = Color.FromArgb(230, 90, 90)
                 End If
                 Dim capturedCh As CharacterState = ch
@@ -205,10 +215,10 @@ Public Class Level1GameplayForm
         Dim rightRect As Rectangle = gamePanel.RightBankRect
         Dim riverRect As Rectangle = gamePanel.RiverRect
 
-        Dim iconSize As Integer = 48
+        Dim iconSize As Integer = 72
         Dim perRow As Integer = Math.Max(1, (leftRect.Width - 16) \ (iconSize + 10))
 
-        Dim boatW As Integer = 90
+        Dim boatW As Integer = 120
         Dim boatH As Integer = CInt(boatW * (GameAssets.BoatCellHeight / CSng(GameAssets.BoatCellWidth)))
         Dim boatX As Integer = If(currentBank = "Left", leftRect.Right - boatW - 10, rightRect.Left + 10)
         Dim boatY As Integer = riverRect.Top + Math.Max(0, (riverRect.Height - boatH) \ 2)
@@ -225,8 +235,8 @@ Public Class Level1GameplayForm
             icon.IsSelected = selectedCharacters.Contains(ch)
 
             If ch.OnBoat Then
-                icon.Size = New Size(34, 34)
-                icon.Location = New Point(boatX + 8 + boatPassengerIndex * 38, boatY + boatH - 40)
+                icon.Size = New Size(50, 50)
+                icon.Location = New Point(boatX + 10 + boatPassengerIndex * 54, boatY + boatH - 56)
                 boatPassengerIndex += 1
                 icon.BringToFront()
             ElseIf ch.Side = "Left" Then
@@ -469,7 +479,11 @@ Public Class CharacterState
     End Sub
 End Class
 
-''' <summary>A single sprite icon: draws SpriteImage with nearest-neighbor scaling and an optional selection border.</summary>
+''' <summary>
+''' A single sprite icon. Can show a static SpriteImage, or cycle through an
+''' array of frames (e.g., an idle animation) via SetAnimationFrames. Draws with
+''' nearest-neighbor scaling and an optional selection border.
+''' </summary>
 Public Class SpritePanel
     Inherits Panel
 
@@ -477,10 +491,57 @@ Public Class SpritePanel
     Public Property IsSelected As Boolean = False
     Public Property AccentColor As Color = Color.FromArgb(255, 215, 0)
 
+    Private animFrames As Image()
+    Private animIndex As Integer = 0
+    Private animTimer As Timer
+
     Public Sub New()
         Me.SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.UserPaint Or ControlStyles.OptimizedDoubleBuffer, True)
         Me.BackColor = Color.Transparent
         Me.Cursor = Cursors.Hand
+    End Sub
+
+    ''' <summary>
+    ''' Starts cycling through the given frames. Passing Nothing or an empty array
+    ''' stops any running animation and leaves SpriteImage as a static frame.
+    ''' Null entries inside the array (a frame that failed to load) are skipped.
+    ''' </summary>
+    Public Sub SetAnimationFrames(frames As Image(), intervalMs As Integer)
+        StopAnimationTimer()
+
+        If frames Is Nothing Then Return
+        Dim validFrames As Image() = frames.Where(Function(f) f IsNot Nothing).ToArray()
+        If validFrames.Length = 0 Then Return
+
+        animFrames = validFrames
+        animIndex = 0
+        SpriteImage = animFrames(0)
+
+        If animFrames.Length > 1 Then
+            animTimer = New Timer() With {.Interval = Math.Max(16, intervalMs)}
+            AddHandler animTimer.Tick, Sub(s, e)
+                                           animIndex = (animIndex + 1) Mod animFrames.Length
+                                           SpriteImage = animFrames(animIndex)
+                                           Me.Invalidate()
+                                       End Sub
+            animTimer.Start()
+        End If
+    End Sub
+
+    Public Sub StopAnimationTimer()
+        If animTimer IsNot Nothing Then
+            animTimer.Stop()
+            animTimer.Dispose()
+            animTimer = Nothing
+        End If
+        animFrames = Nothing
+    End Sub
+
+    Protected Overrides Sub Dispose(disposing As Boolean)
+        If disposing Then
+            StopAnimationTimer()
+        End If
+        MyBase.Dispose(disposing)
     End Sub
 
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
@@ -489,7 +550,14 @@ Public Class SpritePanel
         g.PixelOffsetMode = Drawing2D.PixelOffsetMode.Half
 
         If SpriteImage IsNot Nothing Then
-            g.DrawImage(SpriteImage, New Rectangle(2, 2, Width - 4, Height - 4))
+            Dim availW As Integer = Width - 4
+            Dim availH As Integer = Height - 4
+            Dim scale As Single = Math.Min(availW / CSng(SpriteImage.Width), availH / CSng(SpriteImage.Height))
+            Dim drawW As Integer = Math.Max(1, CInt(SpriteImage.Width * scale))
+            Dim drawH As Integer = Math.Max(1, CInt(SpriteImage.Height * scale))
+            Dim drawX As Integer = 2 + (availW - drawW) \ 2
+            Dim drawY As Integer = 2 + (availH - drawH) \ 2
+            g.DrawImage(SpriteImage, New Rectangle(drawX, drawY, drawW, drawH))
         Else
             Using b As New SolidBrush(Color.Gray)
                 g.FillRectangle(b, 2, 2, Width - 4, Height - 4)
@@ -506,6 +574,7 @@ Public Class SpritePanel
     End Sub
 
 End Class
+
 
 ''' <summary>
 ''' Gameplay background: sky, two tiled grass/rock banks, and a tiled, vertically
