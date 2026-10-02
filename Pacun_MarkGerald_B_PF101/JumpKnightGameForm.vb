@@ -2,15 +2,15 @@
     Inherits Form
 
     ' ---- Sound hooks: leave "" for silence, or put a path RELATIVE to Assets ----
-    Private Const SfxJump As String = ""
-    Private Const SfxSpring As String = ""
-    Private Const SfxMeat As String = ""
-    Private Const SfxDoubleJump As String = ""
-    Private Const SfxWoodBreak As String = ""
-    Private Const SfxAttack As String = ""
-    Private Const SfxBatHit As String = ""
-    Private Const SfxGameOver As String = ""
-    Private Const MusicTrack As String = ""
+    Private Const SfxJump As String = "Audio\\SFX\\knight_jump_sound_effects.mp3"
+    Private Const SfxSpring As String = "Audio\\SFX\\knight_spring_hammer_sound_effect.mp3"
+    Private Const SfxMeat As String = "Audio\\SFX\\knight_meat_poweup_sound_effect.mp3"
+    Private Const SfxDoubleJump As String = "Audio\\SFX\\knight_double_jump_sound_effects.mp3"
+    Private Const SfxWoodBreak As String = "Audio\\SFX\\knight_wood_breaking_sound_effect.mp3"
+    Private Const SfxAttack As String = "Audio\\SFX\\knight_sword_whip_sound_effect.mp3"
+    Private Const SfxBatHit As String = "Audio\\SFX\\knight_bat_death_sound_effect.mp3"
+    Private Const SfxGameOver As String = "Audio\\SFX\\knight_death_gameover_sound_effect.mp3"
+    Private Const MusicTrack As String = "Audio\\Music\\knight_jump_Music_Track_sound_effect.mp3"
 
     Private Const StepSeconds As Single = 1.0F / 60.0F
     Private Const MaxFrameTime As Single = 0.1F

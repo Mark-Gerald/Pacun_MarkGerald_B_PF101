@@ -71,7 +71,7 @@ Public Class Level1GameplayForm
         gamePanel = New GameScenePanel() With {.Dock = DockStyle.Fill}
         Me.Controls.Add(gamePanel)
 
-        Dim bottomPanel As New Panel() With {.Dock = DockStyle.Bottom, .Height = 64, .BackColor = Color.FromArgb(245, 245, 245)}
+        Dim bottomPanel As New Panel() With {.Dock = DockStyle.Bottom, .Height = 84, .BackColor = Color.FromArgb(245, 245, 245)}
         Me.Controls.Add(bottomPanel)
 
         moveCountLabel = New Label() With {
@@ -90,7 +90,7 @@ Public Class Level1GameplayForm
             .BackColor = Color.FromArgb(24, 24, 30),
             .ForeColor = Color.White,
             .Size = New Size(140, 36),
-            .Location = New Point(16, 30)
+            .Location = New Point(16, 40)
         }
         crossButton.FlatAppearance.BorderSize = 0
         AddHandler crossButton.Click, AddressOf CrossButton_Click
@@ -103,7 +103,7 @@ Public Class Level1GameplayForm
             .BackColor = Color.White,
             .ForeColor = Color.Black,
             .Size = New Size(100, 36),
-            .Location = New Point(166, 30)
+            .Location = New Point(166, 40)
         }
         resetButton.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200)
         resetButton.FlatAppearance.BorderSize = 1
@@ -123,7 +123,9 @@ Public Class Level1GameplayForm
         AddHandler backButton.Click, AddressOf BackButton_Click
         bottomPanel.Controls.Add(backButton)
 
-        AddHandler bottomPanel.Resize, Sub(s, e) backButton.Location = New Point(bottomPanel.Width - backButton.Width - 16, 14)
+        Dim positionBackButton As Action = Sub() backButton.Location = New Point(bottomPanel.Width - backButton.Width - 16, 40)
+        AddHandler bottomPanel.Resize, Sub(s, e) positionBackButton()
+        positionBackButton()
     End Sub
 
     ' ==================================================
@@ -182,17 +184,11 @@ Public Class Level1GameplayForm
             If Not characterIcons.ContainsKey(ch) Then
                 Dim icon As New SpritePanel()
                 If ch.Type = "Innocent" Then
-                    Dim idleFrames(GameAssets.FarmerIdleFrameCount - 1) As Image
-                    For i As Integer = 0 To GameAssets.FarmerIdleFrameCount - 1
-                        idleFrames(i) = GameAssets.GetFrame("Character\Farmer-Idle.png", i, 0, GameAssets.FarmerIdleFrameW, GameAssets.FarmerIdleFrameH)
-                    Next
+                    Dim idleFrames As Image() = GameAssets.GetTrimmedAnimation("Character\Farmer-Idle.png", GameAssets.FarmerIdleFrameCount, 0, GameAssets.FarmerIdleFrameW, GameAssets.FarmerIdleFrameH)
                     icon.SetAnimationFrames(idleFrames, 150)
                     icon.AccentColor = Color.FromArgb(90, 160, 255)
                 Else
-                    Dim enemyFrames(GameAssets.EnemyFrameCount - 1) As Image
-                    For i As Integer = 0 To GameAssets.EnemyFrameCount - 1
-                        enemyFrames(i) = GameAssets.GetFrame("enemies\ground_enemy-Sheet.png", i, 0, GameAssets.EnemyFrameW, GameAssets.EnemyFrameH)
-                    Next
+                    Dim enemyFrames As Image() = GameAssets.GetTrimmedAnimation("enemies\ground_enemy-Sheet.png", GameAssets.EnemyFrameCount, 0, GameAssets.EnemyFrameW, GameAssets.EnemyFrameH)
                     icon.SetAnimationFrames(enemyFrames, 150)
                     icon.AccentColor = Color.FromArgb(230, 90, 90)
                 End If
@@ -220,7 +216,7 @@ Public Class Level1GameplayForm
 
         Dim boatW As Integer = 120
         Dim boatH As Integer = CInt(boatW * (GameAssets.BoatCellHeight / CSng(GameAssets.BoatCellWidth)))
-        Dim boatX As Integer = If(currentBank = "Left", leftRect.Right - boatW - 10, rightRect.Left + 10)
+        Dim boatX As Integer = If(currentBank = "Left", riverRect.Left + 8, riverRect.Right - boatW - 8)
         Dim boatY As Integer = riverRect.Top + Math.Max(0, (riverRect.Height - boatH) \ 2)
         boatIcon.Size = New Size(boatW, boatH)
         boatIcon.Location = New Point(boatX, boatY)
@@ -368,10 +364,9 @@ Public Class Level1GameplayForm
             ch.OnBoat = True
         Next
 
-        Dim leftRect As Rectangle = gamePanel.LeftBankRect
-        Dim rightRect As Rectangle = gamePanel.RightBankRect
+        Dim riverRect As Rectangle = gamePanel.RiverRect
         crossStartX = boatIcon.Location.X
-        crossEndX = If(crossingToBank = "Left", leftRect.Right - boatIcon.Width - 10, rightRect.Left + 10)
+        crossEndX = If(crossingToBank = "Left", riverRect.Left + 8, riverRect.Right - boatIcon.Width - 8)
         crossStep = 0
 
         AudioManager.PlaySfx("Audio\SFX\Canoe_Paddle_Sound_Effect.mp3")

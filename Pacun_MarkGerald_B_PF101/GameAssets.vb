@@ -38,6 +38,65 @@ Public Module GameAssets
 
     Private ReadOnly sheets As New Dictionary(Of String, Image)
     Private ReadOnly frameCache As New Dictionary(Of String, Bitmap)
+    Private ReadOnly animCache As New Dictionary(Of String, Image())
+
+    ''' <summary>
+    ''' Returns the frames of a horizontal strip animation, all cropped to the same
+    ''' shared bounding box of non-transparent pixels. Using one shared box keeps
+    ''' frames aligned with each other (no jitter) while removing empty padding so
+    ''' the sprite fills its icon. Results are cached.
+    ''' </summary>
+    Public Function GetTrimmedAnimation(relativePath As String, frameCount As Integer, row As Integer, frameW As Integer, frameH As Integer) As Image()
+        Dim key As String = relativePath & "|trim|" & frameCount & "," & row & "," & frameW & "x" & frameH
+        If animCache.ContainsKey(key) Then Return animCache(key)
+
+        Dim raw(frameCount - 1) As Bitmap
+        For i As Integer = 0 To frameCount - 1
+            raw(i) = GetFrame(relativePath, i, row, frameW, frameH)
+        Next
+
+        Dim minX As Integer = Integer.MaxValue
+        Dim minY As Integer = Integer.MaxValue
+        Dim maxX As Integer = -1
+        Dim maxY As Integer = -1
+
+        For Each bmp In raw
+            If bmp Is Nothing Then Continue For
+            For y As Integer = 0 To bmp.Height - 1
+                For x As Integer = 0 To bmp.Width - 1
+                    If bmp.GetPixel(x, y).A > 0 Then
+                        If x < minX Then minX = x
+                        If y < minY Then minY = y
+                        If x > maxX Then maxX = x
+                        If y > maxY Then maxY = y
+                    End If
+                Next
+            Next
+        Next
+
+        Dim result(frameCount - 1) As Image
+
+        If maxX < 0 Then
+            ' Nothing visible found -- return the untrimmed frames rather than failing.
+            For i As Integer = 0 To frameCount - 1
+                result(i) = raw(i)
+            Next
+        Else
+            Dim cropRect As New Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1)
+            For i As Integer = 0 To frameCount - 1
+                If raw(i) Is Nothing Then Continue For
+                Dim cropped As New Bitmap(cropRect.Width, cropRect.Height)
+                Using g As Graphics = Graphics.FromImage(cropped)
+                    g.InterpolationMode = Drawing2D.InterpolationMode.NearestNeighbor
+                    g.DrawImage(raw(i), New Rectangle(0, 0, cropRect.Width, cropRect.Height), cropRect, GraphicsUnit.Pixel)
+                End Using
+                result(i) = cropped
+            Next
+        End If
+
+        animCache(key) = result
+        Return result
+    End Function
 
     Public Function GetSheet(relativePath As String) As Image
         If sheets.ContainsKey(relativePath) Then Return sheets(relativePath)

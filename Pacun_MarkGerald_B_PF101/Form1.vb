@@ -694,35 +694,64 @@
 
                                 Dim clickHandler As EventHandler =
                                     Sub(s, ev)
+
                                         If lessonNumber = 1 Then
+
                                             Dim orientationWindow As New OrientationForm()
                                             orientationWindow.Show()
+
                                         ElseIf lessonNumber = 2 Then
+
                                             Dim week2Window As New Week2Form()
                                             week2Window.Show()
+
                                         ElseIf lessonNumber = 3 Then
+
                                             Dim week3Window As New Week3Form()
                                             week3Window.Show()
+
                                         ElseIf lessonNumber = 4 Then
+
                                             Dim week4Window As New Week4Form()
                                             week4Window.Show()
+
                                         ElseIf lessonNumber = 5 Then
+
                                             Dim week5Window As New Week5Form()
                                             week5Window.Show()
+
                                         ElseIf lessonNumber = 6 Then
+
                                             Dim week6Window As New Week6Form()
                                             week6Window.Show()
+
                                         ElseIf lessonNumber = 7 Then
+
                                             Dim week7Window As New Week7Form()
                                             week7Window.Show()
+
                                         ElseIf lessonNumber = 8 Then
+
                                             Dim week8Window As New Week8Form()
                                             week8Window.Show()
+
+                                        ElseIf lessonNumber = 16 Then
+
+                                            ' Open the existing Level 1 Animation game.
+                                            OpenAnimationLevel1(s, ev)
+
                                         Else
+
                                             MessageBox.Show(
-                                                "Lesson " & lessonNumber & " " & ChrW(8212) & " " & lessonTitle & " will be implemented in a future update.",
-                                                "Lesson " & lessonNumber, MessageBoxButtons.OK, MessageBoxIcon.Information)
+                                                "Lesson " & lessonNumber & " " &
+                                                ChrW(8212) & " " & lessonTitle &
+                                                " will be implemented in a future update.",
+                                                "Lesson " & lessonNumber,
+                                                MessageBoxButtons.OK,
+                                                MessageBoxIcon.Information)
+
                                         End If
+
                                     End Sub
                                 AttachClickToAll(row, clickHandler)
 
