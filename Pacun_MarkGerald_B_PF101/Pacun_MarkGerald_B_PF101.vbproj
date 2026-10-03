@@ -86,6 +86,19 @@
     <Compile Include="BankAccount.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="CannonBallAssets.vb" />
+    <Compile Include="CannonBallEngine.vb" />
+    <Compile Include="CannonBallGameForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CannonBallLevelData.vb" />
+    <Compile Include="CannonBallMenuPanel.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CannonBallPanel.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CannonBallScores.vb" />
     <Compile Include="Form1.vb">
       <SubType>Form</SubType>
     </Compile>
