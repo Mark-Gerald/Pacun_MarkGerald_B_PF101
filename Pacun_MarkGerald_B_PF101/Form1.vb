@@ -1696,11 +1696,19 @@
 
     Private Sub OpenAnimationLevel3(sender As Object, e As EventArgs)
         CloseLessonsDropdown()
-        MessageBox.Show(
-        "Animation Level 3 will be implemented soon.",
-        "Animation - Level 3",
-        MessageBoxButtons.OK,
-        MessageBoxIcon.Information)
+        Try
+            ' Only one Cannon Ball menu may exist at a time.
+            If CannonBallMenuForm.IsOpen() Then
+                CannonBallMenuForm.BringExistingToFront()
+                Return
+            End If
+
+            Dim cannonMenu As New CannonBallMenuForm()
+            cannonMenu.StartPosition = FormStartPosition.CenterParent
+            cannonMenu.Show()
+        Catch ex As Exception
+            MessageBox.Show("Cannon Ball menu could not be opened." & vbCrLf & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
     End Sub
 
     Private Sub OpenEncapsulation(sender As Object, e As EventArgs)

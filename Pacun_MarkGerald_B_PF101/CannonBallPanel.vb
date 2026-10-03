@@ -27,6 +27,15 @@ Public Class CannonBallPanel
     Private Const CartSpriteBottom As Single = CannonBallEngine.PaddleY + 18.0F
     Private dragSlider As Integer = -1
 
+    ' ---- HUD pause button (upper-left, just before the CANNON BALLS info) ----
+    Public Event PauseClicked()
+    Private Shared ReadOnly PauseRect As New Rectangle(20, 6, 28, 28)
+    Private pauseHover As Boolean = False
+    Private ReadOnly pauseBody As New SolidBrush(Color.FromArgb(58, 58, 82))
+    Private ReadOnly pauseBodyHover As New SolidBrush(Color.FromArgb(96, 96, 130))
+    Private ReadOnly pauseShadow As New SolidBrush(Color.FromArgb(22, 22, 34))
+    Private ReadOnly pauseOutline As New Pen(Color.FromArgb(30, 20, 10), 2.0F)
+
     ' ---- Cached GDI+ objects ----
     Private ReadOnly hudFont As New Font("Segoe UI", 18.0F, FontStyle.Bold, GraphicsUnit.Pixel)
     Private ReadOnly smallFont As New Font("Segoe UI", 13.0F, FontStyle.Bold, GraphicsUnit.Pixel)
@@ -122,6 +131,16 @@ Public Class CannonBallPanel
 
     ' ===================== Pause-settings sliders (mouse) =====================
 
+    Private Function PauseButtonVisible() As Boolean
+        Return Not Paused AndAlso CountdownText = "" AndAlso engine.CanPause
+    End Function
+
+    Private Function OverPauseButton(p As Point) As Boolean
+        If Not PauseButtonVisible() Then Return False
+        Dim lp As PointF = ScreenToLogical(p)
+        Return PauseRect.Contains(CInt(Math.Floor(lp.X)), CInt(Math.Floor(lp.Y)))
+    End Function
+
     Private Function PauseSettingsActive() As Boolean
         Return Paused AndAlso SettingsOpen
     End Function
@@ -151,6 +170,13 @@ Public Class CannonBallPanel
             Dim over As Boolean = dragSlider >= 0 OrElse SliderHit(MusicTrackRect, lp) OrElse SliderHit(SfxTrackRect, lp)
             Me.Cursor = If(over, Cursors.Hand, Cursors.Default)
         End If
+        If Not PauseSettingsActive() Then
+            Dim overBtn As Boolean = OverPauseButton(e.Location)
+            If overBtn <> pauseHover Then
+                pauseHover = overBtn
+                Me.Cursor = If(overBtn, Cursors.Hand, Cursors.Default)
+            End If
+        End If
         MyBase.OnMouseMove(e)
     End Sub
 
@@ -165,7 +191,18 @@ Public Class CannonBallPanel
                 SetSliderValue(1, lp.X)
             End If
         End If
+        If e.Button = MouseButtons.Left AndAlso OverPauseButton(e.Location) Then
+            pauseHover = False
+            Me.Cursor = Cursors.Default
+            RaiseEvent PauseClicked()
+        End If
         MyBase.OnMouseDown(e)
+    End Sub
+
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        pauseHover = False
+        Me.Cursor = Cursors.Default
+        MyBase.OnMouseLeave(e)
     End Sub
 
     Protected Overrides Sub OnMouseUp(e As MouseEventArgs)
@@ -398,16 +435,27 @@ Public Class CannonBallPanel
         g.DrawImage(art.HudBar, New Rectangle(0, 0, CInt(CannonBallEngine.WorldW), CInt(CannonBallEngine.HudH)),
                     0, 0, art.HudBar.Width, art.HudBar.Height, GraphicsUnit.Pixel, spriteAttr)
 
+        DrawPauseButton(g)
+
         ' lives
-        g.DrawString("CANNON BALLS", capFont, If(engine.LifeFlash > 0.0F, goldBrush, captionBrush), 22.0F, 6.0F)
+        g.DrawString("CANNON BALLS", capFont, If(engine.LifeFlash > 0.0F, goldBrush, captionBrush), 58.0F, 6.0F)
         For i As Integer = 0 To engine.Lives - 1
-            g.DrawImage(art.LifeIcon, New Rectangle(22 + i * 13, 20, 10, 10), 0, 0, art.LifeIcon.Width, art.LifeIcon.Height, GraphicsUnit.Pixel, spriteAttr)
+            g.DrawImage(art.LifeIcon, New Rectangle(58 + i * 13, 20, 10, 10), 0, 0, art.LifeIcon.Width, art.LifeIcon.Height, GraphicsUnit.Pixel, spriteAttr)
         Next
 
         ' level / time / score
         DrawStat(g, "LEVEL", engine.Level.ToString() & " / " & CannonBallLevelData.LevelCount.ToString(), 150.0F, topCenterFormat)
         DrawStat(g, "TIME", CannonBallEngine.FormatTime(engine.ElapsedTime), 238.0F, topCenterFormat)
         DrawStat(g, "SCORE", engine.Score.ToString("0000"), 378.0F, topRightFormat)
+    End Sub
+
+    Private Sub DrawPauseButton(g As Graphics)
+        Dim r As Rectangle = PauseRect
+        g.FillRectangle(pauseShadow, r.X, r.Bottom - 3, r.Width, 3)
+        g.FillRectangle(If(pauseHover, pauseBodyHover, pauseBody), r.X, r.Y, r.Width, r.Height - 3)
+        g.DrawRectangle(pauseOutline, r.X + 1, r.Y + 1, r.Width - 3, r.Height - 5)
+        g.FillRectangle(whiteBrush, r.X + 8, r.Y + 6, 4, 13)
+        g.FillRectangle(whiteBrush, r.X + 16, r.Y + 6, 4, 13)
     End Sub
 
     Private Sub DrawStat(g As Graphics, caption As String, value As String, x As Single, fmt As StringFormat)
@@ -546,6 +594,7 @@ Public Class CannonBallPanel
             trackBack.Dispose() : trackFrame.Dispose() : grooveBrush.Dispose()
             musicBrush.Dispose() : sfxBrush.Dispose() : knobBrush.Dispose() : knobBrushActive.Dispose() : tickBrush.Dispose()
             spriteAttr.Dispose()
+            pauseBody.Dispose() : pauseBodyHover.Dispose() : pauseShadow.Dispose() : pauseOutline.Dispose()
             centerFormat.Dispose() : topCenterFormat.Dispose() : topRightFormat.Dispose()
         End If
         MyBase.Dispose(disposing)

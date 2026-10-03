@@ -29,7 +29,7 @@ Public Class Level1GameplayForm
         Me.Controls.Add(gamePanel)
 
         AddHandler gamePanel.SpriteClicked, AddressOf GamePanel_SpriteClicked
-        AddHandler gamePanel.HudButtonClicked, AddressOf GamePanel_HudButtonClicked
+        AddHandler gamePanel.EndButtonClicked, AddressOf GamePanel_EndButtonClicked
         AddHandler Me.FormClosed, AddressOf Level1GameplayForm_FormClosed
 
         InitializeGame()
@@ -76,6 +76,15 @@ Public Class Level1GameplayForm
             Case "cross"
                 TryCross()
             Case "reset"
+                InitializeGame()
+            Case "menu"
+                Me.Close()
+        End Select
+    End Sub
+
+    Private Sub GamePanel_EndButtonClicked(buttonId As String)
+        Select Case buttonId
+            Case "retry"
                 InitializeGame()
             Case "menu"
                 Me.Close()
@@ -256,7 +265,7 @@ Public Class Level1GameplayForm
                               here.Where(Function(c) c.Type = "Innocent").ToList())
 
         statusText = "The goblins outnumbered the farmers on the " & bank.ToLower() & " bank and attacked! Press RESET to try again."
-        gamePanel.ShowBanner("DEFEAT", "The goblins outnumbered the farmers!", False, 1400)
+        gamePanel.ShowEndScreen(False, "DEFEAT", "The goblins outnumbered the farmers!", 1000)
         UpdateHud()
     End Sub
 
@@ -276,7 +285,7 @@ Public Class Level1GameplayForm
         boatPassengers.Clear()
 
         statusText = "Victory! Everyone crossed in " & moveCount & " moves."
-        gamePanel.ShowBanner("VICTORY!", "Everyone crossed in " & moveCount & " moves.", True, 1200)
+        gamePanel.ShowEndScreen(True, "VICTORY!", "Everyone crossed safely!", 700)
         UpdateHud()
     End Sub
 
@@ -342,11 +351,13 @@ End Class
 ''' position (so passengers are always painted over the raft), then the HUD. One timer drives
 ''' every animation. The HUD (moves, status, buttons) is drawn directly on the map: no bars.
 ''' </summary>
+
 Public Class GameScenePanel
     Inherits Panel
 
     Public Event SpriteClicked(sprite As CharacterSprite)
     Public Event HudButtonClicked(buttonId As String)
+    Public Event EndButtonClicked(buttonId As String)
 
     ' ---- tuning constants ----
     Private Const RaftScale As Integer = 2
@@ -358,6 +369,19 @@ Public Class GameScenePanel
     Private Const ColumnSpacing As Integer = 100
     Private Const BankEdgeMargin As Integer = 60
     Private Const DockMargin As Integer = 10
+
+    ' ---- end-screen tuning ----
+    Private Const DefeatFadeMs As Double = 1800.0      ' how long the screen takes to darken
+    Private Const VictoryFadeMs As Double = 1200.0     ' how long the screen takes to brighten
+    Private Const DefeatMaxDark As Double = 0.84       ' 1.0 = fully black
+    Private Const VictoryMaxBright As Double = 0.66    ' 1.0 = fully white
+    Private Const EndButtonsAppearAt As Double = 0.6   ' fraction of the fade at which the buttons appear
+
+    Private Enum EndKind
+        None
+        Defeat
+        Victory
+    End Enum
 
     Private ReadOnly _backdrop As New RiverBackdrop()
     Private ReadOnly _sprites As New List(Of CharacterSprite)
@@ -388,13 +412,19 @@ Public Class GameScenePanel
     Private ReadOnly _hudButtonFont As New Font("Segoe UI", 10.0F, FontStyle.Bold)
     Private ReadOnly _bannerFont As New Font("Segoe UI", 40.0F, FontStyle.Bold)
     Private ReadOnly _bannerSubFont As New Font("Segoe UI", 16.0F, FontStyle.Bold)
+    Private ReadOnly _movesFont As New Font("Segoe UI", 18.0F, FontStyle.Bold)
+    Private ReadOnly _endButtonFont As New Font("Segoe UI", 12.0F, FontStyle.Bold)
     Private ReadOnly _leftFormat As New StringFormat()
     Private ReadOnly _centerFormat As New StringFormat() With {.Alignment = StringAlignment.Center}
 
-    Private _bannerTitle As String = ""
-    Private _bannerSub As String = ""
-    Private _bannerVictory As Boolean = False
-    Private _bannerAtMs As Long = -1
+    ' ---- end screen (defeat / victory) ----
+    Private _endKind As EndKind = EndKind.None
+    Private _endTitle As String = ""
+    Private _endSub As String = ""
+    Private _endStartMs As Long = 0
+    Private ReadOnly _endButtons As New List(Of PixelButtonDef)
+    Private _endHover As PixelButtonDef = Nothing
+    Private _endPressed As PixelButtonDef = Nothing
 
     Public Property HudMoves As Integer = 0
     Public Property HudStatus As String = ""
@@ -441,7 +471,7 @@ Public Class GameScenePanel
         _boatTargetSide = "Right"
         _boatMoving = False
         _boatOnArrive = Nothing
-        _bannerAtMs = -1
+        ClearEndScreen()
         _boatX = DockX(_boatDockSide)
 
         For i As Integer = 0 To characters.Count - 1
@@ -500,11 +530,29 @@ Public Class GameScenePanel
         Next
     End Sub
 
-    Public Sub ShowBanner(title As String, subtitle As String, isVictory As Boolean, delayMs As Integer)
-        _bannerTitle = title
-        _bannerSub = subtitle
-        _bannerVictory = isVictory
-        _bannerAtMs = _clock.ElapsedMilliseconds + delayMs
+    ''' <summary>
+    ''' Starts the defeat (darkening) or victory (brightening) screen after delayMs. From this call on,
+    ''' the HUD buttons and the characters are blocked; only the two end-screen buttons work.
+    ''' </summary>
+    Public Sub ShowEndScreen(isVictory As Boolean, title As String, subtitle As String, delayMs As Integer)
+        _endKind = If(isVictory, EndKind.Victory, EndKind.Defeat)
+        _endTitle = title
+        _endSub = subtitle
+        _endStartMs = _clock.ElapsedMilliseconds + delayMs
+
+        _endButtons.Clear()
+        _endButtons.Add(New PixelButtonDef("retry", "TRY AGAIN", Color.FromArgb(76, 175, 80)))
+        _endButtons.Add(New PixelButtonDef("menu", If(isVictory, "GAME MENU", "MAIN MENU"), Color.FromArgb(66, 133, 200)))
+        _endHover = Nothing
+        _endPressed = Nothing
+        LayoutEndButtons()
+    End Sub
+
+    Private Sub ClearEndScreen()
+        _endKind = EndKind.None
+        _endButtons.Clear()
+        _endHover = Nothing
+        _endPressed = Nothing
     End Sub
 
     Public Function BankSlotPoint(side As String, slotIndex As Integer) As PointF
@@ -527,6 +575,42 @@ Public Class GameScenePanel
 
     Public Sub StopAnimation()
         If _timer IsNot Nothing Then _timer.Stop()
+    End Sub
+
+    ' ==================================================
+    ' END-SCREEN STATE
+    ' ==================================================
+    Private ReadOnly Property IsEndActive As Boolean
+        Get
+            Return _endKind <> EndKind.None
+        End Get
+    End Property
+
+    ' 0 until the delay has passed, then rises to 1 over the fade time.
+    Private Function EndProgress() As Double
+        If _endKind = EndKind.None Then Return 0.0
+        Dim fadeMs As Double = If(_endKind = EndKind.Victory, VictoryFadeMs, DefeatFadeMs)
+        Dim p As Double = (_clock.ElapsedMilliseconds - _endStartMs) / fadeMs
+        Return Math.Max(0.0, Math.Min(1.0, p))
+    End Function
+
+    Private Function EndButtonsVisible() As Boolean
+        Return _endKind <> EndKind.None AndAlso EndProgress() >= EndButtonsAppearAt
+    End Function
+
+    Private Function EndTitleY() As Single
+        Return Math.Max(110.0F, Me.ClientSize.Height * 0.15F)
+    End Function
+
+    Private Sub LayoutEndButtons()
+        If _endButtons.Count < 2 Then Return
+        Dim bw As Integer = 190
+        Dim bh As Integer = 52
+        Dim gap As Integer = 24
+        Dim x As Integer = (Me.ClientSize.Width - (bw * 2 + gap)) \ 2
+        Dim y As Integer = CInt(EndTitleY()) + 156
+        _endButtons(0).Rect = New Rectangle(x, y, bw, bh)
+        _endButtons(1).Rect = New Rectangle(x + bw + gap, y, bw, bh)
     End Sub
 
     ' ==================================================
@@ -577,6 +661,7 @@ Public Class GameScenePanel
         MyBase.OnResize(e)
         _backdrop.Layout(Me.ClientSize.Width, Me.ClientSize.Height)
         LayoutHud()
+        LayoutEndButtons()
         Me.Invalidate()
     End Sub
 
@@ -706,6 +791,10 @@ Public Class GameScenePanel
         Return _hudButtons.FirstOrDefault(Function(b) b.Rect.Contains(p))
     End Function
 
+    Private Function FindEndButtonAt(p As Point) As PixelButtonDef
+        Return _endButtons.FirstOrDefault(Function(b) b.Rect.Contains(p))
+    End Function
+
     Private Function FindSpriteAt(p As Point) As CharacterSprite
         Dim list As List(Of CharacterSprite) = If(_drawOrder.Count > 0, _drawOrder, _sprites)
         For i As Integer = list.Count - 1 To 0 Step -1
@@ -714,11 +803,31 @@ Public Class GameScenePanel
         Return Nothing
     End Function
 
+    Private Sub SetHandCursor(show As Boolean)
+        If show <> _handShown Then
+            _handShown = show
+            Me.Cursor = If(show, Cursors.Hand, Cursors.Default)
+        End If
+    End Sub
+
     ' Hover is re-read from the real cursor position every tick, so a sprite that walks away from
     ' (or arrives under) a stationary cursor updates correctly.
     Private Sub UpdateHover()
         Dim clientPoint As Point = Me.PointToClient(Control.MousePosition)
         Dim inside As Boolean = Me.ClientRectangle.Contains(clientPoint)
+
+        ' While an end screen is active, only its two buttons react.
+        If IsEndActive Then
+            _hudHover = Nothing
+            If _hoveredSprite IsNot Nothing Then
+                _hoveredSprite.IsHovered = False
+                _hoveredSprite = Nothing
+            End If
+            _endHover = Nothing
+            If inside AndAlso EndButtonsVisible() Then _endHover = FindEndButtonAt(clientPoint)
+            SetHandCursor(_endHover IsNot Nothing)
+            Return
+        End If
 
         Dim hudHit As PixelButtonDef = Nothing
         Dim spriteHit As CharacterSprite = Nothing
@@ -737,10 +846,7 @@ Public Class GameScenePanel
 
         Dim showHand As Boolean = (hudHit IsNot Nothing AndAlso hudHit.Enabled) OrElse
                                   (spriteHit IsNot Nothing AndAlso Not InputLocked AndAlso spriteHit.Mode <> SpriteMode.Walking)
-        If showHand <> _handShown Then
-            _handShown = showHand
-            Me.Cursor = If(showHand, Cursors.Hand, Cursors.Default)
-        End If
+        SetHandCursor(showHand)
     End Sub
 
     Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
@@ -752,6 +858,8 @@ Public Class GameScenePanel
         MyBase.OnMouseLeave(e)
         _hudHover = Nothing
         _hudPressed = Nothing
+        _endHover = Nothing
+        _endPressed = Nothing
         If _hoveredSprite IsNot Nothing Then
             _hoveredSprite.IsHovered = False
             _hoveredSprite = Nothing
@@ -761,6 +869,12 @@ Public Class GameScenePanel
     Protected Overrides Sub OnMouseDown(e As MouseEventArgs)
         MyBase.OnMouseDown(e)
         If e.Button <> MouseButtons.Left Then Return
+
+        If IsEndActive Then
+            If EndButtonsVisible() Then _endPressed = FindEndButtonAt(e.Location)
+            Return
+        End If
+
         Dim hit As PixelButtonDef = FindHudButtonAt(e.Location)
         If hit IsNot Nothing AndAlso hit.Enabled Then _hudPressed = hit
     End Sub
@@ -768,11 +882,24 @@ Public Class GameScenePanel
     Protected Overrides Sub OnMouseUp(e As MouseEventArgs)
         MyBase.OnMouseUp(e)
         _hudPressed = Nothing
+        _endPressed = Nothing
     End Sub
 
     Protected Overrides Sub OnMouseClick(e As MouseEventArgs)
         MyBase.OnMouseClick(e)
         If e.Button <> MouseButtons.Left Then Return
+
+        ' End screen: every other click is swallowed (HUD buttons and characters are blocked).
+        If IsEndActive Then
+            If EndButtonsVisible() Then
+                Dim endHit As PixelButtonDef = FindEndButtonAt(e.Location)
+                If endHit IsNot Nothing Then
+                    AudioManager.PlaySfx("Audio\SFX\Button_Plate_Click.mp3")
+                    RaiseEvent EndButtonClicked(endHit.Id)
+                End If
+            End If
+            Return
+        End If
 
         Dim hudHit As PixelButtonDef = FindHudButtonAt(e.Location)
         If hudHit IsNot Nothing Then
@@ -810,6 +937,7 @@ Public Class GameScenePanel
         Next
 
         DrawHud(g)
+        DrawEndScreen(g)     ' on top of everything: darkens/brightens the scene, then title + buttons
         MyBase.OnPaint(e)
     End Sub
 
@@ -862,12 +990,55 @@ Public Class GameScenePanel
         For Each btn In _hudButtons
             DrawPixelButton(g, btn, _hudButtonFont, btn Is _hudHover, btn Is _hudPressed)
         Next
+    End Sub
 
-        If _bannerAtMs >= 0 AndAlso _clock.ElapsedMilliseconds >= _bannerAtMs Then
-            Dim titleColor As Color = If(_bannerVictory, Color.FromArgb(255, 215, 0), Color.FromArgb(235, 70, 60))
-            Dim y As Single = Math.Max(110, Me.ClientSize.Height * 0.15F)
-            DrawOutlinedText(g, _bannerTitle, _bannerFont, titleColor, outline, New RectangleF(0, y, Me.ClientSize.Width, 64), _centerFormat, 3)
-            DrawOutlinedText(g, _bannerSub, _bannerSubFont, Color.White, outline, New RectangleF(0, y + 68, Me.ClientSize.Width, 30), _centerFormat, 2)
+    ' Defeat: the whole scene (including the HUD) fades to dark. Victory: it fades to a bright wash
+    ' with a warm glow behind the title. The title, the moves and the two buttons are drawn on top.
+    Private Sub DrawEndScreen(g As Graphics)
+        If _endKind = EndKind.None Then Return
+        Dim p As Double = EndProgress()
+        If p <= 0.0 Then Return
+
+        Dim w As Integer = Me.ClientSize.Width
+        Dim h As Integer = Me.ClientSize.Height
+        Dim isVictory As Boolean = (_endKind = EndKind.Victory)
+        Dim titleY As Single = EndTitleY()
+        Dim cx As Single = w / 2.0F
+
+        If isVictory Then
+            Using washBrush As New SolidBrush(Color.FromArgb(CInt(255 * VictoryMaxBright * p), 255, 249, 224))
+                g.FillRectangle(washBrush, 0, 0, w, h)
+            End Using
+
+            Dim glowW As Single = Math.Min(w * 0.9F, 900.0F)
+            Dim glowH As Single = 300.0F
+            Using glowPath As New GraphicsPath()
+                glowPath.AddEllipse(New RectangleF(cx - glowW / 2.0F, titleY + 70.0F - glowH / 2.0F, glowW, glowH))
+                Using glowBrush As New PathGradientBrush(glowPath)
+                    glowBrush.CenterColor = Color.FromArgb(CInt(235 * p), 255, 244, 190)
+                    glowBrush.SurroundColors = New Color() {Color.FromArgb(0, 255, 244, 190)}
+                    g.FillPath(glowBrush, glowPath)
+                End Using
+            End Using
+        Else
+            Using darkBrush As New SolidBrush(Color.FromArgb(CInt(255 * DefeatMaxDark * p), 6, 8, 18))
+                g.FillRectangle(darkBrush, 0, 0, w, h)
+            End Using
+        End If
+
+        Dim textAlpha As Integer = CInt(255 * Math.Min(1.0, p * 2.5))
+        Dim titleFill As Color = If(isVictory, Color.FromArgb(textAlpha, 255, 200, 40), Color.FromArgb(textAlpha, 235, 70, 60))
+        Dim outline As Color = If(isVictory, Color.FromArgb(textAlpha, 70, 45, 10), Color.FromArgb(textAlpha, 20, 10, 12))
+        Dim white As Color = Color.FromArgb(textAlpha, 255, 255, 255)
+
+        DrawOutlinedText(g, _endTitle, _bannerFont, titleFill, outline, New RectangleF(0, titleY, w, 64), _centerFormat, 3)
+        DrawOutlinedText(g, _endSub, _bannerSubFont, white, outline, New RectangleF(0, titleY + 68, w, 30), _centerFormat, 2)
+        DrawOutlinedText(g, "Moves: " & HudMoves, _movesFont, white, outline, New RectangleF(0, titleY + 104, w, 34), _centerFormat, 2)
+
+        If EndButtonsVisible() Then
+            For Each btn In _endButtons
+                DrawPixelButton(g, btn, _endButtonFont, btn Is _endHover, btn Is _endPressed)
+            Next
         End If
     End Sub
 
@@ -885,6 +1056,8 @@ Public Class GameScenePanel
             _hudButtonFont.Dispose()
             _bannerFont.Dispose()
             _bannerSubFont.Dispose()
+            _movesFont.Dispose()
+            _endButtonFont.Dispose()
             _leftFormat.Dispose()
             _centerFormat.Dispose()
         End If

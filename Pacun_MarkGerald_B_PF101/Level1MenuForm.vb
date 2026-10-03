@@ -38,7 +38,7 @@ Public Class Level1MenuForm
         AddHandler scenePanel.ExitClicked, AddressOf OnExitClicked
 
         AddHandler Me.Shown, Sub(s, ev)
-                                 AudioManager.PlayMusic("Audio\Music\Wet Hands.mp3", True)
+                                 AudioManager.PlayMusic("Audio\Music\Wet_Hands.mp3", True)
                                  scenePanel.GoToLayer(MenuLayer.Main)
                              End Sub
         ' Don't spend CPU animating water while this form is hidden behind the game.
@@ -53,30 +53,38 @@ Public Class Level1MenuForm
         scenePanel.GoToLayer(MenuLayer.None, Sub() OpenChildForm(New Level1GameplayForm()))
     End Sub
 
-    Private Sub OnNextGameClicked()
-        If isTransitioning Then Return
-        isTransitioning = True
-        scenePanel.GoToLayer(MenuLayer.None, Sub() OpenChildForm(New Level2PlaceholderForm()))
-    End Sub
+
 
     Private Sub OnExitClicked()
         Me.Close()
     End Sub
 
-    Private Sub OpenChildForm(childForm As Form)
+    Private Sub OnNextGameClicked()
+        If isTransitioning Then Return
+        isTransitioning = True
+        ' <-- If your Jump Knight menu class has a different name, change it on the next line.
+        scenePanel.GoToLayer(MenuLayer.None, Sub() OpenChildForm(New Level2MenuForm(), True))
+    End Sub
+
+    Private Sub OpenChildForm(childForm As Form, Optional stopMenuMusic As Boolean = False)
         Try
             AddHandler childForm.FormClosed, Sub(s2, e2)
                                                  isTransitioning = False
                                                  If Not Me.IsDisposed Then
                                                      Me.Show()
+                                                     ' No-op if this track is already playing; restores it after Jump Knight.
+                                                     AudioManager.PlayMusic("Audio\Music\Wet Hands.mp3", True)
                                                      scenePanel.GoToLayer(MenuLayer.Main)
                                                  End If
                                              End Sub
+            ' Stops the River Crossing music so it doesn't play under the other game.
+            If stopMenuMusic Then AudioManager.StopMusic()
             Me.Hide()
             childForm.Show()
         Catch ex As Exception
             isTransitioning = False
             Me.Show()
+            AudioManager.PlayMusic("Audio\Music\Wet Hands.mp3", True)
             scenePanel.GoToLayer(MenuLayer.Main)
             MessageBox.Show("Could not open the next screen: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
@@ -84,8 +92,7 @@ Public Class Level1MenuForm
 
     Private Sub Level1MenuForm_FormClosed(sender As Object, e As FormClosedEventArgs)
         scenePanel.StopAnimation()
-        If Application.OpenForms.OfType(Of Level1GameplayForm)().Count() = 0 AndAlso
-           Application.OpenForms.OfType(Of Level2PlaceholderForm)().Count() = 0 Then
+        If Application.OpenForms.OfType(Of Level1GameplayForm)().Count() = 0 Then
             AudioManager.ShutdownAll()
         End If
     End Sub
@@ -151,7 +158,7 @@ Public Class MenuScenePanel
         _mainButtons.Add(New PixelButtonDef("exit", "EXIT", Color.FromArgb(200, 70, 60)))
         _mainButtons.Add(New PixelButtonDef("howto", "HOW TO PLAY", Color.FromArgb(230, 150, 40)))
         _settingsButtons.Add(New PixelButtonDef("back", "BACK TO MENU", Color.FromArgb(24, 24, 30)))
-        _howToButtons.Add(New PixelButtonDef("back", "BACK", Color.FromArgb(24, 24, 30)))
+        _howToButtons.Add(New PixelButtonDef("back", "BACK", Color.FromArgb(46, 139, 87)))
 
         LayoutControls()
 
@@ -487,7 +494,7 @@ Public Class MenuScenePanel
     Private Sub DrawSlider(g As Graphics, track As Rectangle, value As Integer)
         Dim fillWidth As Integer = CInt(track.Width * value / 100.0)
 
-        Using trackBrush As New SolidBrush(Color.FromArgb(205, 205, 210))
+        Using trackBrush As New SolidBrush(Color.FromArgb(11, 143, 14))
             g.FillRectangle(trackBrush, track)
         End Using
         If fillWidth > 0 Then
@@ -508,35 +515,60 @@ Public Class MenuScenePanel
         End Using
     End Sub
 
+    Private Sub DrawNaturePanelFrame(g As Graphics, panel As Rectangle, title As String)
+        Using bodyBrush As New SolidBrush(Color.FromArgb(234, 245, 224))
+            g.FillRectangle(bodyBrush, panel)
+        End Using
+        Using headerBrush As New SolidBrush(Color.FromArgb(42, 104, 62))
+            g.FillRectangle(headerBrush, New Rectangle(panel.X, panel.Y, panel.Width, 70))
+        End Using
+        Using waterBrush As New SolidBrush(Color.FromArgb(70, 150, 205))
+            g.FillRectangle(waterBrush, New Rectangle(panel.X, panel.Y + 70, panel.Width, 6))
+        End Using
+        Using titleBrush As New SolidBrush(Color.FromArgb(240, 250, 225))
+            g.DrawString(title, _headerFont, titleBrush, New RectangleF(panel.X, panel.Y, panel.Width, 70), _centerFormat)
+        End Using
+        Using outlinePen As New Pen(Color.FromArgb(24, 66, 40), 3)
+            g.DrawRectangle(outlinePen, panel.X + 1, panel.Y + 1, panel.Width - 3, panel.Height - 3)
+        End Using
+    End Sub
+
     Private Sub DrawHowToLayer(g As Graphics)
         Dim p As Rectangle = _howToPanel
-        DrawPanelFrame(g, p, "HOW TO PLAY")
+        DrawNaturePanelFrame(g, p, "HOW TO PLAY")
 
         Dim x As Single = p.X + 36
-        Dim y As Single = p.Y + 84
+        Dim y As Single = p.Y + 92
         Dim w As Single = p.Width - 72
         Dim bullet As String = ChrW(8226) & " "
 
-        DrawSection(g, "GOAL", "Get all 3 farmers and all 3 goblins from the right bank to the left bank.", x, y, w)
-        DrawSection(g, "HOW TO PLAY",
-                    bullet & "Click a character to put them on the boat. Click someone on the boat to take them off." & vbLf &
-                    bullet & "The boat carries 1 or 2 passengers and can't sail empty." & vbLf &
-                    bullet & "Press CROSS RIVER to sail.", x, y, w)
-        DrawSection(g, "HOW YOU LOSE",
-                    "If goblins outnumber the farmers on a bank that has at least one farmer, the goblins attack and you lose.", x, y, w)
-        DrawSection(g, "MOVES",
-                    "Every character you pick, every unloading, and every boat trip counts as one move.", x, y, w)
+        DrawNatureSection(g, "GOAL",
+                          "Get all 3 farmers and all 3 goblins from the right bank to the left bank.",
+                          Color.FromArgb(36, 110, 60), x, y, w)
+        DrawNatureSection(g, "HOW TO PLAY",
+                          bullet & "Click a character to put them on the boat. Click someone on the boat to take them off." & vbLf &
+                          bullet & "The boat carries 1 or 2 passengers and can't sail empty." & vbLf &
+                          bullet & "Press CROSS RIVER to sail.",
+                          Color.FromArgb(35, 105, 165), x, y, w)
+        DrawNatureSection(g, "HOW YOU LOSE",
+                          "If goblins outnumber the farmers on a bank that has at least one farmer, the goblins attack and you lose.",
+                          Color.FromArgb(150, 88, 38), x, y, w)
+        DrawNatureSection(g, "MOVES",
+                          "Every character you pick, every unloading, and every boat trip counts as one move.",
+                          Color.FromArgb(30, 128, 120), x, y, w)
 
         DrawPixelButton(g, _howToButtons(0), _buttonFont, _howToButtons(0) Is _hover, _howToButtons(0) Is _pressed)
     End Sub
 
-    Private Sub DrawSection(g As Graphics, heading As String, body As String, x As Single, ByRef y As Single, width As Single)
-        Using headingBrush As New SolidBrush(Color.FromArgb(30, 30, 36))
-            g.DrawString(heading, _captionFont, headingBrush, x, y)
+    Private Sub DrawNatureSection(g As Graphics, heading As String, body As String, accent As Color,
+                                  x As Single, ByRef y As Single, width As Single)
+        Using accentBrush As New SolidBrush(accent)
+            g.FillRectangle(accentBrush, x, y + 4, 12, 12)
+            g.DrawString(heading, _captionFont, accentBrush, x + 20, y)
         End Using
         y += 22
         Dim size As SizeF = g.MeasureString(body, _bodyFont, CInt(width))
-        Using bodyBrush As New SolidBrush(Color.FromArgb(55, 55, 65))
+        Using bodyBrush As New SolidBrush(Color.FromArgb(38, 62, 46))
             g.DrawString(body, _bodyFont, bodyBrush, New RectangleF(x, y, width, size.Height + 4))
         End Using
         y += size.Height + 12

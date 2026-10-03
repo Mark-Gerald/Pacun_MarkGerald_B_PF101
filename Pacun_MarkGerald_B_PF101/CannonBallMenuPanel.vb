@@ -153,6 +153,7 @@ Public Class CannonBallMenuPanel
         If scene Is Nothing OrElse sceneSize.Width <> w OrElse sceneSize.Height <> h Then BuildScene(w, h)
         g.DrawImageUnscaled(scene, 0, 0)
         DrawFireflies(g, w, h)
+        DrawFlyingBalls(g, w, h)
 
         Select Case Page
             Case CBMenuPage.Main : DrawMain(g, w, h)
@@ -253,6 +254,43 @@ Public Class CannonBallMenuPanel
             Dim a As Integer = CInt((Math.Sin(t * 2.0 + i) * 0.5 + 0.5) * 200.0) + 30
             mutableBrush.Color = Color.FromArgb(a, 190, 255, 130)
             g.FillRectangle(mutableBrush, CInt(fx), CInt(fy), 3, 3)
+        Next
+    End Sub
+
+    ' ---------- Cannon balls flying across the jungle (arcs with a fiery trail) ----------
+
+    Private Const FlyingBallCount As Integer = 8
+
+    Private Shared Function BallPosition(i As Integer, u As Double, w As Integer, h As Integer) As PointF
+        Dim goRight As Boolean = (i Mod 2 = 0)
+        Dim x As Double = If(goRight, -40.0 + (w + 80.0) * u, w + 40.0 - (w + 80.0) * u)
+        Dim baseY As Double = h * (0.38 + 0.07 * (i Mod 6))
+        Dim arc As Double = h * (0.16 + 0.05 * (i Mod 4))
+        Dim y As Double = baseY - arc * 4.0 * u * (1.0 - u)
+        Return New PointF(CSng(x), CSng(y))
+    End Function
+
+    Private Sub DrawFlyingBalls(g As Graphics, w As Integer, h As Integer)
+        Dim t As Double = animClock.Elapsed.TotalSeconds
+        g.InterpolationMode = InterpolationMode.NearestNeighbor
+        g.PixelOffsetMode = PixelOffsetMode.Half
+        For i As Integer = 0 To FlyingBallCount - 1
+            Dim period As Double = 4.2 + i * 0.85
+            Dim u As Double = (t / period + i * 0.37) Mod 1.0
+            Dim size As Integer = 14 + (i Mod 3) * 6
+
+            For k As Integer = 6 To 1 Step -1                ' fiery trail behind the ball
+                Dim uk As Double = u - k * 0.011
+                If uk < 0.0 Then Continue For
+                Dim tp As PointF = BallPosition(i, uk, w, h)
+                mutableBrush.Color = Color.FromArgb(Math.Max(10, 150 - k * 22), 255, 170, 70)
+                Dim ts As Integer = Math.Max(2, size \ 3 - k \ 3)
+                g.FillRectangle(mutableBrush, CInt(tp.X) - ts \ 2, CInt(tp.Y) - ts \ 2, ts, ts)
+            Next
+
+            Dim p As PointF = BallPosition(i, u, w, h)
+            g.DrawImage(art.Ball, New Rectangle(CInt(p.X) - size \ 2, CInt(p.Y) - size \ 2, size, size),
+                        0, 0, art.Ball.Width, art.Ball.Height, GraphicsUnit.Pixel, spriteAttr)
         Next
     End Sub
 
