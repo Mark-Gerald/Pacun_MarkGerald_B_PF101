@@ -74,9 +74,9 @@ Public Class CannonBallGameForm
     Private countdownStep As Integer
     Private gameplayMusicOn As Boolean
 
-    Private fadeStage As FadeStage = fadeStage.None
+    Private currentFadeStage As FadeStage = FadeStage.None
     Private fadeValue As Single
-    Private uiMode As UiMode = uiMode.None
+    Private currentUiMode As UiMode = UiMode.None
 
     Private retryButton As PixelButton
     Private resumeButton As PixelButton
@@ -160,24 +160,24 @@ Public Class CannonBallGameForm
     ' Button rows are in view space (the 640-unit tall view, HUD included); the panel draws its text to match.
     Private Sub PositionButtons()
         If renderPanel Is Nothing Then Return
-        Select Case uiMode
-            Case uiMode.Pause
+        Select Case currentUiMode
+            Case UiMode.Pause
                 PlaceButton(resumeButton, 270)
                 PlaceButton(settingsButton, 340)
                 PlaceButton(menuButton, 410)
-            Case uiMode.PauseSettings
+            Case UiMode.PauseSettings
                 PlaceButton(backButton, 430)
-            Case uiMode.GameOver
+            Case UiMode.GameOver
                 PlaceButton(retryButton, 350)
                 PlaceButton(menuButton, 420)
-            Case uiMode.Victory
+            Case UiMode.Victory
                 PlaceButton(retryButton, 360)
                 PlaceButton(menuButton, 430)
         End Select
     End Sub
 
     Private Sub SetUiMode(mode As UiMode)
-        uiMode = mode
+        currentUiMode = mode
         resumeButton.Visible = (mode = uiMode.Pause)
         settingsButton.Visible = (mode = uiMode.Pause)
         backButton.Visible = (mode = uiMode.PauseSettings)
@@ -191,7 +191,7 @@ Public Class CannonBallGameForm
         PositionButtons()
         StartGameplayMusic()
         accumulator = 0.0F
-        fadeStage = fadeStage.FadingIn          ' the first level fades in from black
+        currentFadeStage = FadeStage.FadingIn          ' the first level fades in from black
         fadeValue = 1.0F
         renderPanel.FadeAmount = 1.0F
         clock.Restart()
@@ -225,20 +225,20 @@ Public Class CannonBallGameForm
     ''' then fade back in. It all happens inside this one window.
     ''' </summary>
     Private Sub UpdateFade(dt As Single)
-        Select Case fadeStage
-            Case fadeStage.FadingOut
+        Select Case currentFadeStage
+            Case FadeStage.FadingOut
                 fadeValue += dt / CannonBallEngine.FadeOutSeconds
                 If fadeValue >= 1.0F Then
                     fadeValue = 1.0F
                     engine.AdvanceLevel()                 ' Level + 1 (cart position, score and lives are kept) or Victory
-                    fadeStage = fadeStage.FadingIn
+                    currentFadeStage = FadeStage.FadingIn
                 End If
-            Case fadeStage.FadingIn
+            Case FadeStage.FadingIn
                 fadeValue -= dt / CannonBallEngine.FadeInSeconds
                 If fadeValue <= 0.0F Then
                     fadeValue = 0.0F
-                    fadeStage = fadeStage.None
-                    If engine.State = CBState.Victory Then SetUiMode(uiMode.Victory)
+                    currentFadeStage = FadeStage.None
+                    If engine.State = CBState.Victory Then SetUiMode(UiMode.Victory)
                 End If
         End Select
         renderPanel.FadeAmount = fadeValue
@@ -324,17 +324,17 @@ Public Class CannonBallGameForm
 
     Private Sub Form_Deactivate(sender As Object, e As EventArgs)
         ClearKeys()
-        If engine.CanPause AndAlso fadeStage <> fadeStage.FadingOut AndAlso (Not paused OrElse countingDown) Then PauseGame()
+        If engine.CanPause AndAlso currentFadeStage <> FadeStage.FadingOut AndAlso (Not paused OrElse countingDown) Then PauseGame()
     End Sub
 
     ''' <summary>ESC / P: pause, leave the pause settings, cancel a countdown, or start the resume countdown.</summary>
     Private Sub TogglePause()
-        If Not engine.CanPause OrElse fadeStage = fadeStage.FadingOut Then Return
+        If Not engine.CanPause OrElse currentFadeStage = FadeStage.FadingOut Then Return
         If countingDown Then
             PauseGame()
         ElseIf paused Then
-            If uiMode = uiMode.PauseSettings Then
-                SetUiMode(uiMode.Pause)
+            If currentUiMode = UiMode.PauseSettings Then
+                SetUiMode(UiMode.Pause)
                 renderPanel.Invalidate()
             Else
                 BeginResumeCountdown()
@@ -427,7 +427,7 @@ Public Class CannonBallGameForm
         renderPanel.Paused = False
         SetUiMode(uiMode.None)
         StartGameplayMusic()
-        fadeStage = fadeStage.FadingIn
+        currentFadeStage = FadeStage.FadingIn
         fadeValue = 1.0F
         accumulator = 0.0F
         clock.Restart()
@@ -484,7 +484,7 @@ Public Class CannonBallGameForm
 
     ''' <summary>The "level complete" effect is over: start fading to black.</summary>
     Private Sub Engine_LevelClearFinished()
-        fadeStage = fadeStage.FadingOut
+        currentFadeStage = FadeStage.FadingOut
         fadeValue = 0.0F
     End Sub
 

@@ -210,22 +210,31 @@ Public Class Level2MenuForm
     Private Sub NextGameButton_Click(sender As Object, e As EventArgs)
         If isTransitioning OrElse pageOpen Then Return
         isTransitioning = True
+
         FadeOutThenAction(Sub()
                               Try
-                                  Dim level3Form As New Level3PlaceholderForm()
+                                  Dim level3Form As New CannonBallGameForm()
+
                                   AddHandler level3Form.FormClosed, Sub(s2, e2)
                                                                         isTransitioning = False
                                                                         If Not Me.IsDisposed Then
                                                                             Me.Opacity = 1.0
                                                                             Me.Show()
+                                                                            AudioManager.PlayMusic(MenuMusic, True)
                                                                         End If
                                                                     End Sub
+
                                   Me.Hide()
                                   level3Form.Show()
+
                               Catch ex As Exception
                                   isTransitioning = False
                                   Me.Opacity = 1.0
-                                  MessageBox.Show("Could not open Level 3: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                                  MessageBox.Show(
+                                  "Could not open Cannon Ball: " & ex.Message,
+                                  "Error",
+                                  MessageBoxButtons.OK,
+                                  MessageBoxIcon.Error)
                               End Try
                           End Sub)
     End Sub

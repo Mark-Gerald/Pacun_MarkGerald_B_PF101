@@ -25,6 +25,7 @@ End Enum
 Public Enum SpriteAction
     Idle
     Walk
+    Attack
 End Enum
 
 ''' <summary>
@@ -237,6 +238,11 @@ Public NotInheritable Class SpriteLibrary
     Private Const MonsterWalkFrontRow As Integer = 6
     Private Const MonsterWalkLeftRow As Integer = 5
     Private Const MonsterWalkRightRow As Integer = 4
+    ' Rows 8 and 9 have large, uneven frame-to-frame change (an attack-style swing). They are
+    ' identified from measurements only, not yet watched in-game: swap the two row numbers if the
+    ' attack looks like it faces the wrong way.
+    Private Const MonsterAttackRightRow As Integer = 8
+    Private Const MonsterAttackLeftRow As Integer = 9
 
     Private Const FarmerIdleSheet As String = "Character\Farmer-Idle.png"
     Private Const FarmerWalkSheet As String = "Character\Farmer-Walk.png"
@@ -244,6 +250,7 @@ Public NotInheritable Class SpriteLibrary
     Private Shared isBuilt As Boolean = False
     Private Shared monsterIdle As Dictionary(Of FacingDirection, Image())
     Private Shared monsterWalk As Dictionary(Of FacingDirection, Image())
+    Private Shared monsterAttack As Dictionary(Of FacingDirection, Image())
     Private Shared farmerIdle As Dictionary(Of FacingDirection, Image())
     Private Shared farmerWalk As Dictionary(Of FacingDirection, Image())
 
@@ -253,19 +260,29 @@ Public NotInheritable Class SpriteLibrary
     Public Shared Function GetFrames(isMonster As Boolean, spriteAction As SpriteAction, facing As FacingDirection) As Image()
         EnsureBuilt()
         If isMonster Then
-            If spriteAction = SpriteAction.Walk Then Return monsterWalk(facing)
-            Return monsterIdle(facing)
+            Select Case spriteAction
+                Case SpriteAction.Walk
+                    Return monsterWalk(facing)
+                Case SpriteAction.Attack
+                    Return monsterAttack(facing)
+                Case Else
+                    Return monsterIdle(facing)
+            End Select
         End If
         If spriteAction = SpriteAction.Walk Then Return farmerWalk(facing)
-        Return farmerIdle(facing)
+        Return farmerIdle(facing)      ' farmers have no attack animation
     End Function
 
     Public Shared Function GetFrameMs(isMonster As Boolean, spriteAction As SpriteAction) As Integer
-        If isMonster Then Return If(spriteAction = SpriteAction.Walk, 120, 220)
+        If isMonster Then
+            If spriteAction = SpriteAction.Walk Then Return 120
+            If spriteAction = SpriteAction.Attack Then Return 110
+            Return 220
+        End If
         Return If(spriteAction = SpriteAction.Walk, 100, 150)
     End Function
 
-    ' Whole-number pixel scale keeps pixel art crisp. Trimmed sizes: monster 16x14, farmer 18x20.
+    ' Whole-number pixel scale keeps pixel art crisp.
     Public Shared Function GetPixelScale(isMonster As Boolean) As Integer
         Return If(isMonster, 5, 4)
     End Function
@@ -278,13 +295,16 @@ Public NotInheritable Class SpriteLibrary
     End Sub
 
     Private Shared Sub BuildMonsterFrames()
+        Dim count As Integer = GameAssets.EnemyFrameCount
         Dim specs As New List(Of StripSpec) From {
-            New StripSpec(MonsterSheet, MonsterIdleFrontRow, GameAssets.EnemyFrameCount),
-            New StripSpec(MonsterSheet, MonsterIdleLeftRow, GameAssets.EnemyFrameCount),
-            New StripSpec(MonsterSheet, MonsterIdleRightRow, GameAssets.EnemyFrameCount),
-            New StripSpec(MonsterSheet, MonsterWalkFrontRow, GameAssets.EnemyFrameCount),
-            New StripSpec(MonsterSheet, MonsterWalkLeftRow, GameAssets.EnemyFrameCount),
-            New StripSpec(MonsterSheet, MonsterWalkRightRow, GameAssets.EnemyFrameCount)
+            New StripSpec(MonsterSheet, MonsterIdleFrontRow, count),
+            New StripSpec(MonsterSheet, MonsterIdleLeftRow, count),
+            New StripSpec(MonsterSheet, MonsterIdleRightRow, count),
+            New StripSpec(MonsterSheet, MonsterWalkFrontRow, count),
+            New StripSpec(MonsterSheet, MonsterWalkLeftRow, count),
+            New StripSpec(MonsterSheet, MonsterWalkRightRow, count),
+            New StripSpec(MonsterSheet, MonsterAttackLeftRow, count),
+            New StripSpec(MonsterSheet, MonsterAttackRightRow, count)
         }
         Dim strips As Image()() = GameAssets.GetTrimmedStrips(GameAssets.EnemyFrameW, GameAssets.EnemyFrameH, specs)
 
@@ -297,6 +317,11 @@ Public NotInheritable Class SpriteLibrary
         monsterWalk(FacingDirection.FaceFront) = Sanitize(strips(3))
         monsterWalk(FacingDirection.FaceLeft) = Sanitize(strips(4))
         monsterWalk(FacingDirection.FaceRight) = Sanitize(strips(5))
+
+        monsterAttack = New Dictionary(Of FacingDirection, Image())()
+        monsterAttack(FacingDirection.FaceLeft) = Sanitize(strips(6))
+        monsterAttack(FacingDirection.FaceRight) = Sanitize(strips(7))
+        monsterAttack(FacingDirection.FaceFront) = monsterAttack(FacingDirection.FaceRight)
     End Sub
 
     Private Shared Sub BuildFarmerFrames()
@@ -309,6 +334,7 @@ Public NotInheritable Class SpriteLibrary
         Dim idleFrames As Image() = Sanitize(strips(0))
         Dim walkFrames As Image() = Sanitize(strips(1))
 
+        ' The Farmer sheets are front-facing only, so "left" uses mirrored copies of the same frames.
         farmerIdle = New Dictionary(Of FacingDirection, Image())()
         farmerIdle(FacingDirection.FaceFront) = idleFrames
         farmerIdle(FacingDirection.FaceRight) = idleFrames

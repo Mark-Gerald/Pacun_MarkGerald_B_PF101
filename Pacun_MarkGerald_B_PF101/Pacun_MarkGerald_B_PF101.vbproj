@@ -186,6 +186,10 @@
     <Compile Include="OrientationForm.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="PixelButton.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="PixelUI.vb" />
     <Compile Include="SpritePanel.vb">
       <SubType>Component</SubType>
     </Compile>
