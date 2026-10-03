@@ -16,11 +16,18 @@ Public Class MenuButtonSpec
     End Sub
 End Class
 
+''' <summary>The full-screen pages that can fade in over the menu.</summary>
+Public Enum MenuPage
+    None
+    Settings
+    Tutorial
+End Enum
+
 ''' <summary>
 ''' The whole Level 2 menu scene, drawn in ONE panel with ONE timer:
 '''   * scrolling castle wall, decorative platforms and flying bats (background, no collisions)
 '''   * main menu look (knight + title; the real PixelButtons are child controls of this panel)
-'''   * themed in-window SETTINGS screen (custom drawn sliders + BACK button)
+'''   * themed in-window SETTINGS and HOW TO PLAY pages (custom drawn) with a BACK button
 '''   * fade transitions between the two (menu buttons are replaced by a fading copy while it runs)
 ''' </summary>
 Public Class Level2ScenePanel
@@ -28,8 +35,8 @@ Public Class Level2ScenePanel
 
     Private Enum SceneMode
         Menu
-        ToSettings
-        Settings
+        ToPage
+        Page
         ToMenu
     End Enum
 
@@ -61,10 +68,10 @@ Public Class Level2ScenePanel
         Public Back As Rectangle
     End Class
 
-    ''' <summary>Raised when a fade has completely finished (True = Settings is now showing, False = menu).</summary>
-    Public Event TransitionFinished(toSettings As Boolean)
+    ''' <summary>Raised when a fade has completely finished (True = a page is now showing, False = the menu).</summary>
+    Public Event TransitionFinished(toPage As Boolean)
 
-    ''' <summary>Raised when the player clicks BACK on the settings screen.</summary>
+    ''' <summary>Raised when the player clicks BACK on a page.</summary>
     Public Event BackRequested()
 
     Private Const ScrollSpeed As Double = 120.0
@@ -79,6 +86,7 @@ Public Class Level2ScenePanel
     Private stopped As Boolean = False
 
     Private mode As SceneMode = SceneMode.Menu
+    Private page As MenuPage = MenuPage.None
     Private transitionT As Single = 0.0F
     Private menuLayer As Bitmap = Nothing
 
@@ -96,6 +104,8 @@ Public Class Level2ScenePanel
     Private ReadOnly pctFont As New Font("Segoe UI", 14.0F, FontStyle.Bold)
     Private ReadOnly buttonFont As New Font("Segoe UI", 11.0F, FontStyle.Bold)
     Private ReadOnly hintFont As New Font("Segoe UI", 9.0F, FontStyle.Regular)
+    Private ReadOnly bodyFont As New Font("Segoe UI", 10.0F, FontStyle.Regular)
+    Private ReadOnly keyFont As New Font("Segoe UI", 10.0F, FontStyle.Bold)
     Private ReadOnly overlayBrush As New SolidBrush(Color.FromArgb(120, 8, 6, 14))
     Private ReadOnly centerFormat As New StringFormat() With {.Alignment = StringAlignment.Center, .LineAlignment = StringAlignment.Center}
     Private ReadOnly centerTopFormat As New StringFormat() With {.Alignment = StringAlignment.Center, .LineAlignment = StringAlignment.Near}
@@ -120,19 +130,20 @@ Public Class Level2ScenePanel
 
     ' ===================== Public API (used by Level2MenuForm) =====================
 
-    ''' <summary>Fades the menu out and the settings screen in. The caller hides the real buttons first.</summary>
-    Public Sub BeginSettingsTransition(specs As List(Of MenuButtonSpec))
-        If stopped OrElse mode <> SceneMode.Menu Then Return
+    ''' <summary>Fades the menu out and a page (Settings / Tutorial) in. The caller hides the real buttons first.</summary>
+    Public Sub BeginPageTransition(target As MenuPage, specs As List(Of MenuButtonSpec))
+        If stopped OrElse mode <> SceneMode.Menu OrElse target = MenuPage.None Then Return
         BuildMenuLayer(specs)
         dragging = -1
         hoverBack = False
         transitionT = 0.0F
-        mode = SceneMode.ToSettings
+        page = target
+        mode = SceneMode.ToPage
     End Sub
 
-    ''' <summary>Fades the settings screen out and the menu back in.</summary>
+    ''' <summary>Fades the current page out and the menu back in.</summary>
     Public Sub BeginMenuTransition(specs As List(Of MenuButtonSpec))
-        If stopped OrElse mode <> SceneMode.Settings Then Return
+        If stopped OrElse mode <> SceneMode.Page Then Return
         BuildMenuLayer(specs)
         dragging = -1
         hoverBack = False
@@ -150,6 +161,7 @@ Public Class Level2ScenePanel
         art.Dispose()
         titleFont.Dispose() : headingFont.Dispose() : labelFont.Dispose()
         pctFont.Dispose() : buttonFont.Dispose() : hintFont.Dispose()
+        bodyFont.Dispose() : keyFont.Dispose()
         overlayBrush.Dispose()
         centerFormat.Dispose() : centerTopFormat.Dispose() : rightFormat.Dispose()
     End Sub
@@ -166,13 +178,16 @@ Public Class Level2ScenePanel
         clockSeconds += dt
         UpdateDecor(dt)
 
-        If mode = SceneMode.ToSettings OrElse mode = SceneMode.ToMenu Then
+        If mode = SceneMode.ToPage OrElse mode = SceneMode.ToMenu Then
             transitionT = Math.Min(1.0F, transitionT + dt / TransitionSeconds)
             If transitionT >= 1.0F Then
-                Dim wentToSettings As Boolean = (mode = SceneMode.ToSettings)
-                mode = If(wentToSettings, SceneMode.Settings, SceneMode.Menu)
-                If Not wentToSettings Then FreeMenuLayer()
-                RaiseEvent TransitionFinished(wentToSettings)
+                Dim wentToPage As Boolean = (mode = SceneMode.ToPage)
+                mode = If(wentToPage, SceneMode.Page, SceneMode.Menu)
+                If Not wentToPage Then
+                    FreeMenuLayer()
+                    page = MenuPage.None
+                End If
+                RaiseEvent TransitionFinished(wentToPage)
             End If
         End If
 
@@ -185,7 +200,7 @@ Public Class Level2ScenePanel
         Select Case mode
             Case SceneMode.Menu
                 Return 1.0F
-            Case SceneMode.ToSettings
+            Case SceneMode.ToPage
                 Return 1.0F - e
             Case SceneMode.ToMenu
                 Return e
@@ -235,7 +250,13 @@ Public Class Level2ScenePanel
 
         ' --- Settings look ---
         Dim setA As Single = 1.0F - menuA
-        If setA > 0.003F Then DrawSettings(g, w, h, setA)
+        If setA > 0.003F Then
+            If page = MenuPage.Tutorial Then
+                DrawTutorial(g, w, h, setA)
+            Else
+                DrawSettings(g, w, h, setA)
+            End If
+        End If
 
         MyBase.OnPaint(e)
     End Sub
@@ -468,6 +489,105 @@ Public Class Level2ScenePanel
         End Using
     End Sub
 
+    ' ===================== How to play (tutorial) page =====================
+
+    Private Class TutorialLayout
+        Public Card As Rectangle
+        Public HeadingY As Integer
+        Public DividerY As Integer
+        Public RowsTop As Integer
+        Public Back As Rectangle
+    End Class
+
+    Private Function GetTutorialLayout() As TutorialLayout
+        Dim w As Integer = Me.Width
+        Dim h As Integer = Me.Height
+        Dim cw As Integer = Math.Max(440, Math.Min(740, w - 60))
+        Dim ch As Integer = 550
+        Dim cx As Integer = (w - cw) \ 2
+        Dim cy As Integer = Math.Max(10, (h - ch) \ 2)
+
+        Dim L As New TutorialLayout()
+        L.Card = New Rectangle(cx, cy, cw, ch)
+        L.HeadingY = cy + 18
+        L.DividerY = cy + 76
+        L.RowsTop = cy + 92
+        L.Back = New Rectangle(cx + (cw - 220) \ 2, cy + ch - 52 - 18, 220, 52)
+        Return L
+    End Function
+
+    Private Shared ReadOnly TutorialKeys() As String = {"GOAL", "MOVE", "ATTACK", "DOUBLE JUMP", "SUPER JUMP", "PLATFORMS", "PAUSE"}
+    Private Shared ReadOnly TutorialText() As String = {
+        "Climb the castle tower as high as you can. The knight jumps by himself. Do not fall, and avoid the bats!",
+        "LEFT / RIGHT arrows or A / D steer the knight. Leave one side of the screen to appear on the other.",
+        "SPACE swings your sword in front of you. Hit a bat for +25 points. Touching a bat ends the run.",
+        "Grab the MEAT for 5 seconds of double jump. Press UP or W while in the air.",
+        "Touch the HAMMER for a giant spring launch. Each power-up can be used only once.",
+        "Stone is safe. Blue-tinted platforms move. Wood breaks after one landing. Ice is slippery.",
+        "P, Esc or the pause button pauses the game. RESUME gives you a 3-2-1 countdown."}
+
+    Private Sub DrawTutorial(g As Graphics, w As Integer, h As Integer, a As Single)
+        Dim L As TutorialLayout = GetTutorialLayout()
+        Dim c As Rectangle = L.Card
+
+        DrawCard(g, c, a)
+
+        g.SmoothingMode = Drawing2D.SmoothingMode.AntiAlias
+        Dim headRect As New RectangleF(c.X, L.HeadingY, c.Width, 52)
+        Using sh As New SolidBrush(Al(Color.FromArgb(160, 0, 0, 0), a))
+            g.DrawString("HOW TO PLAY", headingFont, sh, New RectangleF(headRect.X + 3, headRect.Y + 3, headRect.Width, headRect.Height), centerTopFormat)
+        End Using
+        Using tb As New SolidBrush(Al(Color.White, a))
+            g.DrawString("HOW TO PLAY", headingFont, tb, headRect, centerTopFormat)
+        End Using
+        g.SmoothingMode = Drawing2D.SmoothingMode.None
+
+        Using dv As New SolidBrush(Al(Color.FromArgb(90, 70, 120), a))
+            g.FillRectangle(dv, c.X + 40, L.DividerY, c.Width - 80, 2)
+        End Using
+        Using gold As New SolidBrush(Al(Color.FromArgb(235, 195, 95), a))
+            g.FillRectangle(gold, c.X + c.Width \ 2 - 4, L.DividerY - 3, 8, 8)
+        End Using
+
+        Dim labelW As Integer = 150
+        Dim textX As Integer = c.X + 36 + labelW
+        Dim textW As Integer = c.Width - 72 - labelW
+        Dim rowH As Integer = 50
+        Using kb As New SolidBrush(Al(Color.FromArgb(255, 220, 110), a))
+            Using bb As New SolidBrush(Al(Color.FromArgb(225, 225, 235), a))
+                For i As Integer = 0 To TutorialKeys.Length - 1
+                    Dim y As Integer = L.RowsTop + i * rowH
+                    g.DrawString(TutorialKeys(i), keyFont, kb, c.X + 36, y)
+                    g.DrawString(TutorialText(i), bodyFont, bb, New RectangleF(textX, y, textW, rowH))
+                Next
+            End Using
+        End Using
+
+        DrawPixelButton(g, L.Back, "BACK", BackColorRed, hoverBack, a)
+    End Sub
+
+    ''' <summary>Shared card look: shadow, dark fill, castle outline, inner line, gold corner studs.</summary>
+    Private Sub DrawCard(g As Graphics, c As Rectangle, a As Single)
+        Using sb As New SolidBrush(Al(Color.FromArgb(120, 0, 0, 0), a))
+            g.FillRectangle(sb, c.X + 6, c.Y + 7, c.Width, c.Height)
+        End Using
+        Using fb As New SolidBrush(Al(Color.FromArgb(228, 18, 13, 28), a))
+            g.FillRectangle(fb, c)
+        End Using
+        Using pen As New Pen(Al(Color.FromArgb(30, 20, 10), a), 4.0F)
+            g.DrawRectangle(pen, c.X + 2, c.Y + 2, c.Width - 4, c.Height - 4)
+        End Using
+        Using pen As New Pen(Al(Color.FromArgb(110, 86, 150), a), 1.0F)
+            g.DrawRectangle(pen, c.X + 7, c.Y + 7, c.Width - 15, c.Height - 15)
+        End Using
+        Using gold As New SolidBrush(Al(Color.FromArgb(235, 195, 95), a))
+            g.FillRectangle(gold, c.X + 3, c.Y + 3, 6, 6)
+            g.FillRectangle(gold, c.Right - 9, c.Y + 3, 6, 6)
+            g.FillRectangle(gold, c.X + 3, c.Bottom - 9, 6, 6)
+            g.FillRectangle(gold, c.Right - 9, c.Bottom - 9, 6, 6)
+        End Using
+    End Sub
+
     ' ===================== Settings mouse input =====================
 
     Private Shared Function SliderHit(track As Rectangle, p As Point) As Boolean
@@ -488,7 +608,12 @@ Public Class Level2ScenePanel
     End Sub
 
     Protected Overrides Sub OnMouseDown(e As MouseEventArgs)
-        If mode = SceneMode.Settings AndAlso e.Button = MouseButtons.Left Then
+        If mode = SceneMode.Page AndAlso e.Button = MouseButtons.Left Then
+            If page = MenuPage.Tutorial Then
+                If GetTutorialLayout().Back.Contains(e.Location) Then RaiseEvent BackRequested()
+                MyBase.OnMouseDown(e)
+                Return
+            End If
             Dim L As SettingsLayout = GetLayout()
             If L.Back.Contains(e.Location) Then
                 RaiseEvent BackRequested()
@@ -504,7 +629,10 @@ Public Class Level2ScenePanel
     End Sub
 
     Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
-        If mode = SceneMode.Settings Then
+        If mode = SceneMode.Page AndAlso page = MenuPage.Tutorial Then
+            hoverBack = GetTutorialLayout().Back.Contains(e.Location)
+            Me.Cursor = If(hoverBack, Cursors.Hand, Cursors.Default)
+        ElseIf mode = SceneMode.Page Then
             Dim L As SettingsLayout = GetLayout()
             If dragging >= 0 Then SetSliderFromX(dragging, e.X, L)
             hoverBack = L.Back.Contains(e.Location)

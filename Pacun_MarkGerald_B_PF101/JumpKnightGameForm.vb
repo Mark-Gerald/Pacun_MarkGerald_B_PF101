@@ -1,16 +1,41 @@
-﻿Public Class JumpKnightGameForm
+﻿Imports System
+Imports System.Collections.Generic
+Imports System.Drawing
+Imports System.Windows.Forms
+
+''' <summary>
+''' The Jump Knight window. ONE game timer + ONE countdown timer, both created once.
+''' Pause button, P / Esc and RESUME all use the same pause code. The pause screen has its own
+''' SETTINGS page. Gameplay music: starts at the first move, pauses with the game, resumes after
+''' the countdown, stops when the knight dies and starts again from the beginning on the next run.
+''' </summary>
+Public Class JumpKnightGameForm
     Inherits Form
 
-    ' ---- Sound hooks: leave "" for silence, or put a path RELATIVE to Assets ----
-    Private Const SfxJump As String = "Audio\\SFX\\knight_jump_sound_effects.mp3"
-    Private Const SfxSpring As String = "Audio\\SFX\\knight_spring_hammer_sound_effect.mp3"
-    Private Const SfxMeat As String = "Audio\\SFX\\knight_meat_poweup_sound_effect.mp3"
-    Private Const SfxDoubleJump As String = "Audio\\SFX\\knight_double_jump_sound_effects.mp3"
-    Private Const SfxWoodBreak As String = "Audio\\SFX\\knight_wood_breaking_sound_effect.mp3"
-    Private Const SfxAttack As String = "Audio\\SFX\\knight_sword_whip_sound_effect.mp3"
-    Private Const SfxBatHit As String = "Audio\\SFX\\knight_bat_death_sound_effect.mp3"
-    Private Const SfxGameOver As String = "Audio\\SFX\\knight_death_gameover_sound_effect.mp3"
-    Private Const MusicTrack As String = "Audio\\Music\\knight_jump_Music_Track_sound_effect.mp3"
+    ' ---- Sound files (paths are relative to the shared Assets folder) ----
+    Private Const SfxJump As String = "Audio\SFX\knight_jump_sound_effects.mp3"
+    Private Const SfxSpring As String = "Audio\SFX\knight_spring_hammer_sound_effect.mp3"
+    Private Const SfxMeat As String = "Audio\SFX\knight_meat_poweup_sound_effect.mp3"
+    Private Const SfxDoubleJump As String = "Audio\SFX\knight_double_jump_sound_effects.mp3"
+    Private Const SfxWoodBreak As String = "Audio\SFX\knight_wood_breaking_sound_effect.mp3"
+    Private Const SfxAttack As String = "Audio\SFX\knight_sword_whip_sound_effect.mp3"
+    Private Const SfxBatHit As String = "Audio\SFX\knight_bat_death_sound_effect.mp3"
+    Private Const SfxGameOver As String = "Audio\SFX\knight_death_gameover_sound_effect.mp3"
+    Private Const MusicTrack As String = "Audio\Music\knight_jump_Music_Track_sound_effect.mp3"
+
+    ' ---- Volume of each effect relative to the SFX slider (1.0 = full, 0.3 = 30 percent) ----
+    ' Power-up sounds are the loudest; the constantly repeating jump sounds are the quietest.
+    Private Const GainJump As Double = 0.3
+    Private Const GainDoubleJump As Double = 0.3
+    Private Const GainSpring As Double = 1.0
+    Private Const GainMeat As Double = 1.0
+    Private Const GainWoodBreak As Double = 0.7
+    Private Const GainAttack As Double = 0.6
+    Private Const GainBatHit As Double = 0.7
+    Private Const GainGameOver As Double = 0.8
+
+    ' The same sound can never start twice within this many milliseconds.
+    Private Const SfxMinGapMs As Long = 70
 
     Private Const StepSeconds As Single = 1.0F / 60.0F
     Private Const MaxFrameTime As Single = 0.1F
@@ -22,6 +47,8 @@
     Private ReadOnly gameTimer As System.Windows.Forms.Timer
     Private ReadOnly countdownTimer As System.Windows.Forms.Timer
     Private ReadOnly clock As New System.Diagnostics.Stopwatch()
+    Private ReadOnly sfxClock As System.Diagnostics.Stopwatch = System.Diagnostics.Stopwatch.StartNew()
+    Private ReadOnly lastSfxMs As New Dictionary(Of String, Long)
     Private accumulator As Single
 
     Private leftHeld As Boolean
@@ -34,9 +61,12 @@
     Private paused As Boolean
     Private countingDown As Boolean
     Private countdownStep As Integer
+    Private gameplayMusicOn As Boolean = False   ' True from the first move until the knight dies
 
     Private retryButton As PixelButton
     Private resumeButton As PixelButton
+    Private settingsButton As PixelButton
+    Private backButton As PixelButton
     Private menuButton As PixelButton
 
     Public Sub New()
@@ -87,31 +117,64 @@
     Private Sub BuildButtons()
         retryButton = New PixelButton("RETRY", Color.FromArgb(76, 175, 80))
         resumeButton = New PixelButton("RESUME", Color.FromArgb(76, 175, 80))
+        settingsButton = New PixelButton("SETTINGS", Color.FromArgb(66, 133, 200))
+        backButton = New PixelButton("BACK", Color.FromArgb(200, 70, 60))
         menuButton = New PixelButton("MENU", Color.FromArgb(200, 70, 60))
 
         AddHandler retryButton.Click, AddressOf RetryButton_Click
         AddHandler resumeButton.Click, AddressOf ResumeButton_Click
+        AddHandler settingsButton.Click, AddressOf SettingsButton_Click
+        AddHandler backButton.Click, AddressOf BackButton_Click
         AddHandler menuButton.Click, AddressOf MenuButton_Click
 
-        For Each b As PixelButton In New PixelButton() {retryButton, resumeButton, menuButton}
+        For Each b As PixelButton In New PixelButton() {retryButton, resumeButton, settingsButton, backButton, menuButton}
             b.Size = New Size(200, 50)
             b.Visible = False
             renderPanel.Controls.Add(b)
         Next
     End Sub
 
+    Private Sub PlaceButton(b As PixelButton, logicalY As Single)
+        Dim p As Point = renderPanel.LogicalToScreen(JumpKnightEngine.WorldW / 2.0F, logicalY)
+        b.Location = New Point(p.X - b.Width \ 2, p.Y)
+    End Sub
+
+    ' Pause screen: RESUME / SETTINGS / MENU.  Game over: RETRY / MENU.  Pause settings page: BACK.
     Private Sub PositionButtons()
         If renderPanel Is Nothing Then Return
-        Dim first As Point = renderPanel.LogicalToScreen(JumpKnightEngine.WorldW / 2.0F, 360)
-        Dim second As Point = renderPanel.LogicalToScreen(JumpKnightEngine.WorldW / 2.0F, 440)
-        retryButton.Location = New Point(first.X - retryButton.Width \ 2, first.Y)
-        resumeButton.Location = New Point(first.X - resumeButton.Width \ 2, first.Y)
-        menuButton.Location = New Point(second.X - menuButton.Width \ 2, second.Y)
+        If renderPanel.Overlay = JKOverlay.Paused Then
+            PlaceButton(resumeButton, 330)
+            PlaceButton(settingsButton, 400)
+            PlaceButton(menuButton, 470)
+            PlaceButton(backButton, 420)
+        Else
+            PlaceButton(retryButton, 360)
+            PlaceButton(menuButton, 440)
+        End If
+    End Sub
+
+    Private Sub ShowPauseButtons(settingsPage As Boolean)
+        resumeButton.Visible = Not settingsPage
+        settingsButton.Visible = Not settingsPage
+        menuButton.Visible = Not settingsPage
+        backButton.Visible = settingsPage
+        retryButton.Visible = False
+        renderPanel.SettingsOpen = settingsPage
+    End Sub
+
+    Private Sub HideAllOverlayButtons()
+        retryButton.Visible = False
+        resumeButton.Visible = False
+        settingsButton.Visible = False
+        backButton.Visible = False
+        menuButton.Visible = False
+        renderPanel.SettingsOpen = False
     End Sub
 
     Private Sub Form_Shown(sender As Object, e As EventArgs)
         PositionButtons()
-        If MusicTrack <> "" Then AudioManager.PlayMusic(MusicTrack, True)
+        AudioManager.StopMusic()          ' menu music ends here; gameplay music starts at the first move
+        gameplayMusicOn = False
         accumulator = 0.0F
         clock.Restart()
         gameTimer.Start()
@@ -139,7 +202,6 @@
 
     ' ===================== Keyboard =====================
 
-    ' Arrow keys, Escape and P are handled here so no control can steal them.
     Protected Overrides Function ProcessCmdKey(ByRef msg As Message, keyData As Keys) As Boolean
         Select Case keyData
             Case Keys.Left
@@ -202,7 +264,6 @@
         End Select
     End Sub
 
-    ' UP / W: double jump (only works with the meat buff). First press only.
     Private Sub PressJump()
         If jumpHeld Then Return
         jumpHeld = True
@@ -214,17 +275,19 @@
         End If
     End Sub
 
-    ' SPACE: sword attack. Holding the key triggers ONE attack; the engine adds duration + cooldown.
     Private Sub PressAttack()
         If attackHeld Then Return
         attackHeld = True
-        If paused Then Return                       ' pause screen and countdown: no attacks
-        engine.TryAttack()                          ' the engine ignores it unless the game is running
+        If paused Then Return
+        engine.TryAttack()
     End Sub
 
     Private Sub StartRunIfReady()
         If paused Then Return
-        If engine.State = JKState.Ready Then engine.Begin()
+        If engine.State = JKState.Ready Then
+            engine.Begin()
+            StartGameplayMusic()          ' the knight just moved for the first time
+        End If
     End Sub
 
     Private Sub ClearKeys()
@@ -235,7 +298,20 @@
         pauseKeyHeld = False
     End Sub
 
-    ' ===================== Pause / resume countdown (one implementation for all inputs) =====================
+    ' ===================== Gameplay music =====================
+
+    Private Sub StartGameplayMusic()
+        If gameplayMusicOn Then Return
+        gameplayMusicOn = True
+        AudioManager.PlayMusic(MusicTrack, True)   ' loops until the knight dies
+    End Sub
+
+    Private Sub StopGameplayMusic()
+        gameplayMusicOn = False
+        AudioManager.StopMusic()                   ' the next run starts again from the beginning
+    End Sub
+
+    ' ===================== Pause / settings / resume countdown =====================
 
     Private Sub Form_Deactivate(sender As Object, e As EventArgs)
         ClearKeys()
@@ -246,13 +322,17 @@
         PauseGame()
     End Sub
 
-    ''' <summary>P / Esc: pause when playing, cancel a countdown, or start the resume countdown when paused.</summary>
+    ''' <summary>P / Esc: pause, leave the pause settings page, cancel a countdown, or start the resume countdown.</summary>
     Private Sub TogglePause()
         If engine.State <> JKState.Playing Then Return
         If countingDown Then
-            PauseGame()                 ' cancel the countdown, back to the pause screen
+            PauseGame()                          ' cancel the countdown, back to the pause screen
         ElseIf paused Then
-            BeginResumeCountdown()
+            If renderPanel.SettingsOpen Then
+                CloseSettingsPage()              ' settings -> pause screen (does NOT resume)
+            Else
+                BeginResumeCountdown()
+            End If
         Else
             PauseGame()
         End If
@@ -266,10 +346,27 @@
         gameTimer.Stop()
         clock.Stop()
         ClearKeys()
+        If gameplayMusicOn Then AudioManager.PauseMusic()      ' the music pauses with the game
         renderPanel.Overlay = JKOverlay.Paused
-        resumeButton.Visible = True
-        menuButton.Visible = True
-        retryButton.Visible = False
+        ShowPauseButtons(False)
+        PositionButtons()
+        renderPanel.Invalidate()
+    End Sub
+
+    Private Sub SettingsButton_Click(sender As Object, e As EventArgs)
+        If Not paused OrElse countingDown Then Return
+        ShowPauseButtons(True)
+        PositionButtons()
+        renderPanel.Invalidate()
+    End Sub
+
+    Private Sub BackButton_Click(sender As Object, e As EventArgs)
+        CloseSettingsPage()
+    End Sub
+
+    Private Sub CloseSettingsPage()
+        If Not paused OrElse countingDown Then Return
+        ShowPauseButtons(False)
         PositionButtons()
         renderPanel.Invalidate()
     End Sub
@@ -278,16 +375,15 @@
         BeginResumeCountdown()
     End Sub
 
-    ''' <summary>Hides the pause screen and counts 3, 2, 1, GO! with the game still frozen.</summary>
+    ''' <summary>Hides the pause screen and counts 3, 2, 1, GO! with the game (and music) still frozen.</summary>
     Private Sub BeginResumeCountdown()
-        If Not paused OrElse countingDown Then Return      ' cannot start twice
+        If Not paused OrElse countingDown Then Return
         If engine.State <> JKState.Playing Then Return
 
         countingDown = True
         countdownStep = 3
         renderPanel.Overlay = JKOverlay.None
-        resumeButton.Visible = False
-        menuButton.Visible = False
+        HideAllOverlayButtons()
         renderPanel.CountdownText = "3"
         countdownTimer.Stop()
         countdownTimer.Start()
@@ -300,7 +396,7 @@
             renderPanel.CountdownText = countdownStep.ToString()
         ElseIf countdownStep = 0 Then
             renderPanel.CountdownText = "GO!"
-            ResumeGameplay()                                ' the timer keeps running one more tick to clear "GO!"
+            ResumeGameplay()
         Else
             StopCountdown()
         End If
@@ -310,6 +406,7 @@
     Private Sub ResumeGameplay()
         countingDown = False
         paused = False
+        If gameplayMusicOn Then AudioManager.ResumeMusic()     ' only after the countdown has finished
         accumulator = 0.0F
         clock.Restart()
         gameTimer.Start()
@@ -324,13 +421,12 @@
 
     Private Sub RetryButton_Click(sender As Object, e As EventArgs)
         StopCountdown()
+        StopGameplayMusic()               ' silent until the knight moves again, then it starts from the beginning
         engine.Reset()
         ClearKeys()
         paused = False
         renderPanel.Overlay = JKOverlay.None
-        retryButton.Visible = False
-        resumeButton.Visible = False
-        menuButton.Visible = False
+        HideAllOverlayButtons()
         accumulator = 0.0F
         clock.Restart()
         gameTimer.Start()
@@ -348,45 +444,53 @@
         StopCountdown()
         gameTimer.Stop()
         clock.Stop()
-        PlaySfx(SfxGameOver)
+        StopGameplayMusic()               ' the music stops when the knight dies
+        PlaySfx(SfxGameOver, GainGameOver)
         renderPanel.Overlay = JKOverlay.GameOver
+        HideAllOverlayButtons()
         retryButton.Visible = True
         menuButton.Visible = True
-        resumeButton.Visible = False
         PositionButtons()
         renderPanel.Invalidate()
     End Sub
 
     Private Sub Engine_Bounced(kind As JKPlatformKind)
-        PlaySfx(SfxJump)
+        If kind = JKPlatformKind.Wood Then Return      ' wood plays its breaking sound instead of the jump sound
+        PlaySfx(SfxJump, GainJump)
     End Sub
 
     Private Sub Engine_SpringUsed()
-        PlaySfx(SfxSpring)
+        PlaySfx(SfxSpring, GainSpring)
     End Sub
 
     Private Sub Engine_MeatCollected()
-        PlaySfx(SfxMeat)
+        PlaySfx(SfxMeat, GainMeat)
     End Sub
 
     Private Sub Engine_DoubleJumped()
-        PlaySfx(SfxDoubleJump)
+        PlaySfx(SfxDoubleJump, GainDoubleJump)
     End Sub
 
     Private Sub Engine_WoodBroke()
-        PlaySfx(SfxWoodBreak)
+        PlaySfx(SfxWoodBreak, GainWoodBreak)
     End Sub
 
     Private Sub Engine_Attacked()
-        PlaySfx(SfxAttack)
+        PlaySfx(SfxAttack, GainAttack)
     End Sub
 
     Private Sub Engine_BatHit()
-        PlaySfx(SfxBatHit)
+        PlaySfx(SfxBatHit, GainBatHit)
     End Sub
 
-    Private Sub PlaySfx(relativePath As String)
-        If relativePath <> "" Then AudioManager.PlaySfx(relativePath)
+    ' Plays a sound effect, ignoring a repeat of the same sound within SfxMinGapMs.
+    Private Sub PlaySfx(relativePath As String, gain As Double)
+        If relativePath = "" Then Return
+        Dim nowMs As Long = sfxClock.ElapsedMilliseconds
+        Dim lastMs As Long
+        If lastSfxMs.TryGetValue(relativePath, lastMs) AndAlso nowMs - lastMs < SfxMinGapMs Then Return
+        lastSfxMs(relativePath) = nowMs
+        AudioManager.PlaySfx(relativePath, gain)
     End Sub
 
     ' ===================== Cleanup =====================
@@ -410,7 +514,7 @@
         RemoveHandler engine.BatHit, AddressOf Engine_BatHit
         RemoveHandler engine.GameEnded, AddressOf Engine_GameEnded
 
-        If MusicTrack <> "" Then AudioManager.StopMusic()
+        AudioManager.StopMusic()          ' the Level 2 menu starts its own music when it re-appears
         renderPanel.Dispose()
         assets.Dispose()
     End Sub

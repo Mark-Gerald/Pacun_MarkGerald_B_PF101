@@ -5,6 +5,10 @@ Imports System.Linq
 ''' Shared audio playback for the game. Background music plays through one looping
 ''' MediaPlayer; each sound effect gets its own short-lived MediaPlayer so effects
 ''' can overlap. Volumes come from GameSettings and apply immediately.
+'''
+''' NEW in this version: PauseMusic / ResumeMusic (keep the playback position) and
+''' PlaySfx(path, gain) so a single sound can be quieter than the SFX slider setting.
+''' Everything Level 1 uses is unchanged.
 ''' </summary>
 Public Module AudioManager
 
@@ -23,7 +27,7 @@ Public Module AudioManager
             Return
         End If
 
-        ' Already playing this exact track -- don't restart it.
+        ' Already playing (or paused on) this exact track -- don't restart it.
         If musicPlayer IsNot Nothing AndAlso currentMusicPath = fullPath Then
             Return
         End If
@@ -67,6 +71,26 @@ Public Module AudioManager
         End If
     End Sub
 
+    ''' <summary>Pauses the current music and remembers where it was.</summary>
+    Public Sub PauseMusic()
+        If musicPlayer IsNot Nothing Then
+            Try
+                musicPlayer.Pause()
+            Catch
+            End Try
+        End If
+    End Sub
+
+    ''' <summary>Continues paused music from the same position.</summary>
+    Public Sub ResumeMusic()
+        If musicPlayer IsNot Nothing Then
+            Try
+                musicPlayer.Play()
+            Catch
+            End Try
+        End If
+    End Sub
+
     ' Call this after changing GameSettings.MusicVolume so currently-playing music updates live.
     Public Sub ApplyMusicVolume()
         If musicPlayer IsNot Nothing Then
@@ -76,6 +100,15 @@ Public Module AudioManager
 
     ' ===== Sound effects (can overlap) =====
     Public Sub PlaySfx(relativePath As String)
+        PlaySfx(relativePath, 1.0)
+    End Sub
+
+    ''' <summary>
+    ''' Plays a sound effect at (SFX slider volume x gain). gain 1.0 = full slider volume,
+    ''' 0.3 = 30 percent of it. MediaPlayer cannot go louder than 1.0, so "louder" sounds are
+    ''' made relative by lowering the others.
+    ''' </summary>
+    Public Sub PlaySfx(relativePath As String, gain As Double)
         Dim fullPath As String = IO.Path.Combine(AssetsRoot, relativePath)
 
         If Not IO.File.Exists(fullPath) Then
@@ -83,7 +116,8 @@ Public Module AudioManager
             Return
         End If
 
-        Dim volume As Double = GameSettings.GetInstance().GetSfxVolumeAsDecimal()
+        Dim volume As Double = GameSettings.GetInstance().GetSfxVolumeAsDecimal() * gain
+        volume = Math.Max(0.0, Math.Min(1.0, volume))
         If volume <= 0.0 Then Return ' muted -- don't even spin up a player
 
         Dim player As New MediaPlayer()

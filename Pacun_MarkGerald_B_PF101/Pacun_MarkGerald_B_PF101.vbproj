@@ -152,12 +152,6 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Level2ScenePanel.vb" />
-    <Compile Include="Level3PlaceholderForm.Designer.vb">
-      <DependentUpon>Level3PlaceholderForm.vb</DependentUpon>
-    </Compile>
-    <Compile Include="Level3PlaceholderForm.vb">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Include="My Project\AssemblyInfo.vb" />
     <Compile Include="My Project\Application.Designer.vb">
       <AutoGen>True</AutoGen>

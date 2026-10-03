@@ -1,4 +1,7 @@
-﻿Imports System.Drawing.Imaging
+﻿Imports System
+Imports System.Drawing
+Imports System.Drawing.Imaging
+Imports System.Windows.Forms
 
 Public Enum JKOverlay
     None
@@ -28,6 +31,12 @@ Public Class JumpKnightPanel
     ' Pause button (logical play-area coordinates). It sits on the left stone pillar, so it never covers the score.
     Private Shared ReadOnly PauseRect As New Rectangle(4, 6, 32, 28)
     Private pauseHover As Boolean = False
+
+    ''' <summary>True while the pause screen shows its SETTINGS page (set by the game form).</summary>
+    Public Property SettingsOpen As Boolean = False
+    Private dragSlider As Integer = -1
+    Private Shared ReadOnly MusicTrackRect As New Rectangle(60, 222, 280, 16)
+    Private Shared ReadOnly SfxTrackRect As New Rectangle(60, 302, 280, 16)
 
     ' Cached GDI+ objects (created once, disposed in Dispose)
     Private ReadOnly hudFont As New Font("Segoe UI", 18.0F, FontStyle.Bold, GraphicsUnit.Pixel)
@@ -59,6 +68,17 @@ Public Class JumpKnightPanel
     Private ReadOnly slashPenInner As New Pen(Color.FromArgb(120, 180, 255), 2.0F)
     Private ReadOnly sparkPen As New Pen(Color.FromArgb(255, 240, 150), 2.0F)
     Private ReadOnly spriteAttr As New ImageAttributes()
+    Private ReadOnly cardBrush As New SolidBrush(Color.FromArgb(235, 18, 13, 28))
+    Private ReadOnly cardPen As New Pen(Color.FromArgb(30, 20, 10), 4.0F)
+    Private ReadOnly cardInnerPen As New Pen(Color.FromArgb(110, 86, 150), 1.0F)
+    Private ReadOnly trackBack As New SolidBrush(Color.FromArgb(12, 8, 18))
+    Private ReadOnly trackFrame As New Pen(Color.FromArgb(30, 20, 10), 2.0F)
+    Private ReadOnly grooveBrush As New SolidBrush(Color.FromArgb(42, 36, 56))
+    Private ReadOnly musicBrush As New SolidBrush(Color.FromArgb(76, 175, 80))
+    Private ReadOnly sfxBrush As New SolidBrush(Color.FromArgb(66, 133, 200))
+    Private ReadOnly knobBrush As New SolidBrush(Color.FromArgb(228, 228, 238))
+    Private ReadOnly knobBrushActive As New SolidBrush(Color.White)
+    Private ReadOnly tickBrush As New SolidBrush(Color.FromArgb(130, 118, 160))
     Private ReadOnly leftShade As Drawing2D.LinearGradientBrush
     Private ReadOnly rightShade As Drawing2D.LinearGradientBrush
     Private ReadOnly centerFormat As New StringFormat() With {.Alignment = StringAlignment.Center, .LineAlignment = StringAlignment.Center}
@@ -121,11 +141,40 @@ Public Class JumpKnightPanel
         Return PauseRect.Contains(CInt(Math.Floor(lp.X)), CInt(Math.Floor(lp.Y)))
     End Function
 
+    Private Function PauseSettingsActive() As Boolean
+        Return Overlay = JKOverlay.Paused AndAlso SettingsOpen
+    End Function
+
+    Private Shared Function SliderHit(track As Rectangle, lp As PointF) As Boolean
+        Return lp.X >= track.X - 10 AndAlso lp.X <= track.Right + 10 AndAlso
+               lp.Y >= track.Y - 14 AndAlso lp.Y <= track.Bottom + 14
+    End Function
+
+    Private Sub SetSliderValue(index As Integer, logicalX As Single)
+        Dim track As Rectangle = If(index = 0, MusicTrackRect, SfxTrackRect)
+        Dim innerW As Integer = Math.Max(1, track.Width - 6)
+        Dim v As Integer = CInt(Math.Round((logicalX - (track.X + 3)) * 100.0 / innerW))
+        v = Math.Max(0, Math.Min(100, v))
+        If index = 0 Then
+            GameSettings.GetInstance().MusicVolume = v
+            AudioManager.ApplyMusicVolume()
+        Else
+            GameSettings.GetInstance().SfxVolume = v
+        End If
+    End Sub
+
     Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
-        Dim over As Boolean = OverPauseButton(e.Location)
-        If over <> pauseHover Then
-            pauseHover = over
+        If PauseSettingsActive() Then
+            Dim lp As PointF = ScreenToLogical(e.Location)
+            If dragSlider >= 0 Then SetSliderValue(dragSlider, lp.X)
+            Dim over As Boolean = dragSlider >= 0 OrElse SliderHit(MusicTrackRect, lp) OrElse SliderHit(SfxTrackRect, lp)
             Me.Cursor = If(over, Cursors.Hand, Cursors.Default)
+        Else
+            Dim over As Boolean = OverPauseButton(e.Location)
+            If over <> pauseHover Then
+                pauseHover = over
+                Me.Cursor = If(over, Cursors.Hand, Cursors.Default)
+            End If
         End If
         MyBase.OnMouseMove(e)
     End Sub
@@ -137,12 +186,28 @@ Public Class JumpKnightPanel
     End Sub
 
     Protected Overrides Sub OnMouseDown(e As MouseEventArgs)
-        If e.Button = MouseButtons.Left AndAlso OverPauseButton(e.Location) Then
-            pauseHover = False
-            Me.Cursor = Cursors.Default
-            RaiseEvent PauseClicked()
+        If e.Button = MouseButtons.Left Then
+            If PauseSettingsActive() Then
+                Dim lp As PointF = ScreenToLogical(e.Location)
+                If SliderHit(MusicTrackRect, lp) Then
+                    dragSlider = 0
+                    SetSliderValue(0, lp.X)
+                ElseIf SliderHit(SfxTrackRect, lp) Then
+                    dragSlider = 1
+                    SetSliderValue(1, lp.X)
+                End If
+            ElseIf OverPauseButton(e.Location) Then
+                pauseHover = False
+                Me.Cursor = Cursors.Default
+                RaiseEvent PauseClicked()
+            End If
         End If
         MyBase.OnMouseDown(e)
+    End Sub
+
+    Protected Overrides Sub OnMouseUp(e As MouseEventArgs)
+        dragSlider = -1
+        MyBase.OnMouseUp(e)
     End Sub
 
     ' ===================== Painting =====================
@@ -221,13 +286,12 @@ Public Class JumpKnightPanel
         Next
     End Sub
 
-    ''' <summary>Draws bmp exactly 'width' wide (keeping its aspect ratio), top edge at y.
-    ''' The drawn width is the platform's collision width, so what you see is what you land on.</summary>
+    ''' <summary>Draws bmp exactly 'width' wide (keeping its aspect ratio), top edge at y.</summary>
     Private Sub DrawPlatformSprite(g As Graphics, bmp As Bitmap, x As Integer, y As Integer, width As Single, fallback As Brush)
         If bmp IsNot Nothing Then
             Dim w As Integer = CInt(Math.Round(width))
             Dim h As Integer = Math.Max(1, CInt(Math.Round(bmp.Height * width / bmp.Width)))
-            g.DrawImage(bmp, New Rectangle(x, y, w, h), 0, 0, bmp.Width, bmp.Height, GraphicsUnit.Pixel)
+            g.DrawImage(bmp, New Rectangle(x, y, w, h), 0, 0, bmp.Width, bmp.Height, GraphicsUnit.Pixel, spriteAttr)
         Else
             g.FillRectangle(fallback, x, y, width, 14)
         End If
@@ -251,8 +315,8 @@ Public Class JumpKnightPanel
                 Dim sc As Single = p.Width / art.WoodLog.Width
                 Dim halfW As Integer = CInt(Math.Round(art.WoodLeft.Width * sc))
                 Dim hh As Integer = Math.Max(1, CInt(Math.Round(art.WoodLeft.Height * sc)))
-                g.DrawImage(art.WoodLeft, New Rectangle(x - drift, y + fall, halfW, hh), 0, 0, art.WoodLeft.Width, art.WoodLeft.Height, GraphicsUnit.Pixel)
-                g.DrawImage(art.WoodRight, New Rectangle(x + halfW + drift, y + fall, halfW, hh), 0, 0, art.WoodRight.Width, art.WoodRight.Height, GraphicsUnit.Pixel)
+                g.DrawImage(art.WoodLeft, New Rectangle(x - drift, y + fall, halfW, hh), 0, 0, art.WoodLeft.Width, art.WoodLeft.Height, GraphicsUnit.Pixel, spriteAttr)
+                g.DrawImage(art.WoodRight, New Rectangle(x + halfW + drift, y + fall, halfW, hh), 0, 0, art.WoodRight.Width, art.WoodRight.Height, GraphicsUnit.Pixel, spriteAttr)
             Else
                 g.FillRectangle(fallbackWood, x - drift, y + fall, CInt(p.Width / 2), 14)
                 g.FillRectangle(fallbackWood, x + CInt(p.Width / 2) + drift, y + fall, CInt(p.Width / 2), 14)
@@ -392,42 +456,28 @@ Public Class JumpKnightPanel
         g.DrawArc(slashPenInner, cx - r3, cy - r3, r3 * 2.0F, r3 * 2.0F, startAngle, sweepAngle)
     End Sub
 
-
     Private Sub DrawImpacts(g As Graphics)
         For Each imp As JKImpact In engine.Impacts
-            Dim sx As Single = imp.X
-            Dim screenY As Single = SY(imp.Y)
-
-            If screenY > JumpKnightEngine.ViewH + 40 OrElse screenY < -40 Then Continue For
-
+            Dim impX As Single = imp.X
+            Dim impY As Single = SY(imp.Y)
+            If impY > JumpKnightEngine.ViewH + 40 OrElse impY < -40 Then Continue For
             Dim a As Single = imp.Age
 
             ' Spark burst
             If a < 0.3F Then
                 Dim r1 As Single = 6.0F + a * 90.0F
                 Dim r2 As Single = r1 + 9.0F * (1.0F - a / 0.3F)
-
                 For i As Integer = 0 To 7
                     Dim ang As Double = i * Math.PI / 4.0
-
                     g.DrawLine(sparkPen,
-                           sx + CSng(Math.Cos(ang)) * r1,
-                           screenY + CSng(Math.Sin(ang)) * r1,
-                           sx + CSng(Math.Cos(ang)) * r2,
-                           screenY + CSng(Math.Sin(ang)) * r2)
+                               impX + CSng(Math.Cos(ang)) * r1, impY + CSng(Math.Sin(ang)) * r1,
+                               impX + CSng(Math.Cos(ang)) * r2, impY + CSng(Math.Sin(ang)) * r2)
                 Next
             End If
 
             ' Floating points
             If a < 0.5F Then
-                DrawShadowText(
-                g,
-                "+" & JumpKnightEngine.BatPoints.ToString(),
-                smallFont,
-                goldBrush,
-                sx - 12.0F,
-                screenY - 26.0F - a * 40.0F
-            )
+                DrawShadowText(g, "+" & JumpKnightEngine.BatPoints.ToString(), smallFont, goldBrush, impX - 12.0F, impY - 26.0F - a * 40.0F)
             End If
         Next
     End Sub
@@ -482,13 +532,59 @@ Public Class JumpKnightPanel
         g.FillRectangle(dimBrush, 0, 0, JumpKnightEngine.WorldW, JumpKnightEngine.ViewH)
 
         If Overlay = JKOverlay.Paused Then
-            DrawCenteredText(g, "PAUSED", bigFont, whiteBrush, 200)
+            If SettingsOpen Then
+                DrawPauseSettings(g)
+            Else
+                DrawCenteredText(g, "PAUSED", bigFont, whiteBrush, 200)
+            End If
         Else
             DrawCenteredText(g, "GAME OVER", bigFont, whiteBrush, 150)
             DrawCenteredText(g, "SCORE  " & engine.Score.ToString(), hudFont, whiteBrush, 215)
             DrawCenteredText(g, "BEST  " & engine.BestScore.ToString(), hudFont, goldBrush, 245)
             If engine.NewBest Then DrawCenteredText(g, "NEW BEST!", hudFont, goldBrush, 280)
         End If
+    End Sub
+
+    ' ---------- Pause screen: SETTINGS page (same look as the menu settings) ----------
+
+    Private Sub DrawPauseSettings(g As Graphics)
+        Dim card As New Rectangle(30, 90, 340, 400)
+        g.FillRectangle(cardBrush, card)
+        g.DrawRectangle(cardPen, card.X + 2, card.Y + 2, card.Width - 4, card.Height - 4)
+        g.DrawRectangle(cardInnerPen, card.X + 7, card.Y + 7, card.Width - 15, card.Height - 15)
+        DrawCenteredText(g, "SETTINGS", bigFont, whiteBrush, 135)
+        g.FillRectangle(tickBrush, card.X + 30, 170, card.Width - 60, 2)
+        g.FillRectangle(goldBrush, card.X + card.Width \ 2 - 4, 167, 8, 8)
+
+        DrawSliderLogical(g, "BACKGROUND MUSIC", MusicTrackRect, GameSettings.GetInstance().MusicVolume, musicBrush, dragSlider = 0)
+        DrawSliderLogical(g, "SOUND EFFECTS", SfxTrackRect, GameSettings.GetInstance().SfxVolume, sfxBrush, dragSlider = 1)
+    End Sub
+
+    Private Sub DrawSliderLogical(g As Graphics, caption As String, track As Rectangle, value As Integer, accent As Brush, active As Boolean)
+        DrawShadowText(g, caption, smallFont, whiteBrush, track.X, track.Y - 30)
+        Dim pct As String = value.ToString() & "%"
+        Dim pctSize As SizeF = g.MeasureString(pct, hudFont)
+        DrawShadowText(g, pct, hudFont, goldBrush, track.Right - pctSize.Width, track.Y - 34)
+
+        Dim innerW As Integer = Math.Max(1, track.Width - 6)
+        Dim fillW As Integer = CInt(innerW * value / 100.0)
+
+        g.FillRectangle(trackBack, track)
+        g.DrawRectangle(trackFrame, track.X + 1, track.Y + 1, track.Width - 3, track.Height - 3)
+        g.FillRectangle(grooveBrush, track.X + 3, track.Y + 3, innerW, track.Height - 6)
+        If fillW > 0 Then g.FillRectangle(accent, track.X + 3, track.Y + 3, fillW, track.Height - 6)
+
+        For i As Integer = 0 To 10
+            Dim tx As Integer = track.X + CInt(track.Width * i / 10.0)
+            g.FillRectangle(tickBrush, tx - 1, track.Bottom + 5, 2, If(i Mod 5 = 0, 8, 5))
+        Next
+
+        Dim kx As Integer = track.X + 3 + fillW
+        Dim ky As Integer = track.Y + track.Height \ 2 - 15
+        g.FillRectangle(shadowBrush, kx - 8, ky + 4, 16, 30)
+        g.FillRectangle(If(active, knobBrushActive, knobBrush), kx - 8, ky, 16, 30)
+        g.DrawRectangle(trackFrame, kx - 7, ky + 1, 14, 28)
+        g.FillRectangle(accent, kx - 2, ky + 6, 4, 18)
     End Sub
 
     ''' <summary>Big centred 3 / 2 / 1 / GO! shown while the game is frozen (or just resuming).</summary>
@@ -516,6 +612,9 @@ Public Class JumpKnightPanel
             pauseBody.Dispose() : pauseBodyHover.Dispose() : pauseShadow.Dispose() : pauseOutline.Dispose()
             slashPenOuter.Dispose() : slashPenMid.Dispose() : slashPenInner.Dispose() : sparkPen.Dispose()
             spriteAttr.Dispose()
+            cardBrush.Dispose() : cardPen.Dispose() : cardInnerPen.Dispose()
+            trackBack.Dispose() : trackFrame.Dispose() : grooveBrush.Dispose()
+            musicBrush.Dispose() : sfxBrush.Dispose() : knobBrush.Dispose() : knobBrushActive.Dispose() : tickBrush.Dispose()
             leftShade.Dispose() : rightShade.Dispose() : centerFormat.Dispose()
         End If
         MyBase.Dispose(disposing)

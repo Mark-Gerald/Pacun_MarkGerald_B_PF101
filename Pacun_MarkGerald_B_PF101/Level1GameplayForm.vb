@@ -9,25 +9,21 @@ Public Class Level1GameplayForm
     Private instructionLabel As Label
     Private statusLabel As Label
     Private moveCountLabel As Label
-    Private crossButton As Button
-    Private resetButton As Button
-    Private backButton As Button
+    Private crossButton As PixelButton
+    Private resetButton As PixelButton
+    Private backButton As PixelButton
 
     ' ---- puzzle state (logic only; no drawing here) ----
     Private characters As New List(Of CharacterState)
-    Private ReadOnly selectedCharacters As New List(Of CharacterState)
     Private currentBank As String = "Right"
     Private moveCount As Integer = 0
     Private gameWon As Boolean = False
     Private isAnimating As Boolean = False
 
     ' ---- crossing sequence bookkeeping ----
-    ' crossingId changes on every new crossing/reset so callbacks from an abandoned
-    ' crossing can never touch the new state.
     Private crossingId As Integer = 0
     Private crossingPassengers As New List(Of CharacterState)
     Private crossingDest As String = ""
-    Private boardedCount As Integer = 0
     Private landedCount As Integer = 0
 
     Public Sub New()
@@ -35,11 +31,17 @@ Public Class Level1GameplayForm
         Me.Size = New Size(1200, 800)
         Me.MinimumSize = New Size(900, 620)
         Me.StartPosition = FormStartPosition.CenterParent
-        Me.BackColor = Color.FromArgb(240, 240, 240)
+        Me.BackColor = Color.FromArgb(20, 20, 26)
 
         BuildLayout()
 
-        gamePanel.IsSelectable = Function(sp As CharacterSprite) (Not isAnimating) AndAlso (Not gameWon) AndAlso sp.Mode = SpriteMode.AtBank AndAlso sp.Character.Side = currentBank
+        gamePanel.IsSelectable = Function(sp As CharacterSprite)
+                                     If isAnimating OrElse gameWon Then Return False
+                                     If sp.Mode = SpriteMode.Walking Then Return False
+                                     If sp.Mode = SpriteMode.OnBoat Then Return True
+                                     If sp.Mode = SpriteMode.AtBank AndAlso sp.Character.Side = currentBank Then Return True
+                                     Return False
+                                 End Function
         AddHandler gamePanel.SpriteClicked, AddressOf GamePanel_SpriteClicked
         AddHandler Me.FormClosed, AddressOf Level1GameplayForm_FormClosed
 
@@ -47,15 +49,19 @@ Public Class Level1GameplayForm
     End Sub
 
     ' ==================================================
-    ' LAYOUT
+    ' LAYOUT  (themed top panel; no white bottom bar)
     ' ==================================================
     Private Sub BuildLayout()
-        Dim topPanel As New Panel() With {.Dock = DockStyle.Top, .Height = 64, .BackColor = Color.FromArgb(24, 24, 30)}
+        Dim topPanel As New Panel() With {
+            .Dock = DockStyle.Top,
+            .Height = 130,
+            .BackColor = Color.FromArgb(24, 24, 30)
+        }
         Me.Controls.Add(topPanel)
 
         instructionLabel = New Label() With {
-            .Text = "Select up to 2 passengers from the boat's bank, then click Cross River.",
-            .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
+            .Text = "Click a passenger on the boat's bank to walk them aboard. Click a boarded passenger to send them back.",
+            .Font = New Font("Segoe UI", 9.5F, FontStyle.Bold),
             .ForeColor = Color.White,
             .AutoSize = True,
             .Location = New Point(16, 8)
@@ -71,71 +77,54 @@ Public Class Level1GameplayForm
         }
         topPanel.Controls.Add(statusLabel)
 
-        gamePanel = New GameScenePanel() With {.Dock = DockStyle.Fill}
-        Me.Controls.Add(gamePanel)
-
-        Dim bottomPanel As New Panel() With {.Dock = DockStyle.Bottom, .Height = 84, .BackColor = Color.FromArgb(245, 245, 245)}
-        Me.Controls.Add(bottomPanel)
-
         moveCountLabel = New Label() With {
             .Text = "Moves: 0",
             .Font = New Font("Segoe UI", 10.0F, FontStyle.Bold),
-            .ForeColor = Color.FromArgb(40, 40, 40),
-            .AutoSize = True,
-            .Location = New Point(16, 10)
-        }
-        bottomPanel.Controls.Add(moveCountLabel)
-
-        crossButton = New Button() With {
-            .Text = "Cross River",
-            .Font = New Font("Segoe UI", 9.5F, FontStyle.Bold),
-            .FlatStyle = FlatStyle.Flat,
-            .BackColor = Color.FromArgb(24, 24, 30),
             .ForeColor = Color.White,
-            .Size = New Size(140, 36),
-            .Location = New Point(16, 40)
+            .AutoSize = True,
+            .Location = New Point(16, 62)
         }
-        crossButton.FlatAppearance.BorderSize = 0
+        topPanel.Controls.Add(moveCountLabel)
+
+        crossButton = New PixelButton("CROSS RIVER", Color.FromArgb(76, 175, 80))
+        crossButton.Size = New Size(170, 46)
+        crossButton.Cursor = Cursors.Hand
         AddHandler crossButton.Click, AddressOf CrossButton_Click
-        bottomPanel.Controls.Add(crossButton)
+        topPanel.Controls.Add(crossButton)
 
-        resetButton = New Button() With {
-            .Text = "Reset",
-            .Font = New Font("Segoe UI", 9.5F),
-            .FlatStyle = FlatStyle.Flat,
-            .BackColor = Color.White,
-            .ForeColor = Color.Black,
-            .Size = New Size(100, 36),
-            .Location = New Point(166, 40)
-        }
-        resetButton.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200)
-        resetButton.FlatAppearance.BorderSize = 1
+        resetButton = New PixelButton("RESET", Color.FromArgb(66, 133, 200))
+        resetButton.Size = New Size(110, 46)
+        resetButton.Cursor = Cursors.Hand
         AddHandler resetButton.Click, AddressOf ResetButton_Click
-        bottomPanel.Controls.Add(resetButton)
+        topPanel.Controls.Add(resetButton)
 
-        backButton = New Button() With {
-            .Text = ChrW(8592) & " Back to Menu",
-            .Font = New Font("Segoe UI", 9.5F),
-            .FlatStyle = FlatStyle.Flat,
-            .BackColor = Color.White,
-            .ForeColor = Color.Black,
-            .Size = New Size(150, 36)
-        }
-        backButton.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200)
-        backButton.FlatAppearance.BorderSize = 1
+        backButton = New PixelButton("BACK TO MENU", Color.FromArgb(150, 90, 190))
+        backButton.Size = New Size(160, 46)
+        backButton.Cursor = Cursors.Hand
         AddHandler backButton.Click, AddressOf BackButton_Click
-        bottomPanel.Controls.Add(backButton)
+        topPanel.Controls.Add(backButton)
 
-        Dim positionBackButton As Action = Sub() backButton.Location = New Point(bottomPanel.Width - backButton.Width - 16, 40)
-        AddHandler bottomPanel.Resize, Sub(s, e) positionBackButton()
-        positionBackButton()
+        Dim positionButtons As Action = Sub()
+                                            Dim rightPad As Integer = 16
+                                            Dim gap As Integer = 10
+                                            Dim y As Integer = 62
+                                            backButton.Location = New Point(topPanel.Width - rightPad - backButton.Width, y)
+                                            resetButton.Location = New Point(backButton.Left - gap - resetButton.Width, y)
+                                            crossButton.Location = New Point(resetButton.Left - gap - crossButton.Width, y)
+                                        End Sub
+        AddHandler topPanel.Resize, Sub(s, e) positionButtons()
+        positionButtons()
+
+        gamePanel = New GameScenePanel() With {.Dock = DockStyle.Fill}
+        Me.Controls.Add(gamePanel)
+        gamePanel.BringToFront()
     End Sub
 
     ' ==================================================
     ' GAME STATE
     ' ==================================================
     Private Sub InitializeGame()
-        crossingId += 1   ' invalidates callbacks from any crossing in progress
+        crossingId += 1   ' invalidates callbacks from any previous crossing or walking
 
         ' Order matters only for the starting layout: each row holds one innocent + one monster.
         characters = New List(Of CharacterState) From {
@@ -146,51 +135,117 @@ Public Class Level1GameplayForm
             New CharacterState("I3", "Innocent", "Right"),
             New CharacterState("M3", "Monster", "Right")
         }
-        selectedCharacters.Clear()
         crossingPassengers = New List(Of CharacterState)
         currentBank = "Right"
         moveCount = 0
         gameWon = False
         isAnimating = False
-        boardedCount = 0
         landedCount = 0
 
         gamePanel.ResetScene(characters)
 
-        crossButton.Enabled = True
         UpdateMoveCount()
         SetStatus("Select passengers to begin.")
     End Sub
 
     ' ==================================================
-    ' SELECTION
+    ' CHARACTER CLICK: walk to boat, or walk back to bank
     ' ==================================================
     Private Sub GamePanel_SpriteClicked(sprite As CharacterSprite)
         If isAnimating OrElse gameWon Then Return
-        If sprite.Mode <> SpriteMode.AtBank Then Return
+        If sprite.Mode = SpriteMode.Walking Then Return
 
         Dim ch As CharacterState = sprite.Character
+
+        If sprite.Mode = SpriteMode.OnBoat Then
+            ' ---- click a boarded character: walk back to its home slot on the current bank ----
+            Dim capturedSprite As CharacterSprite = sprite
+            Dim capturedCh As CharacterState = ch
+            Dim homeSlot As Integer = capturedSprite.SlotIndex
+
+            gamePanel.WalkSpriteTo(capturedSprite,
+                                   Function() gamePanel.BankSlotPoint(currentBank, homeSlot),
+                                   SpriteMode.AtBank,
+                                   Sub()
+                                       If characters.Contains(capturedCh) Then
+                                           capturedCh.OnBoat = False
+                                           ReflowBoatSlots()
+                                           SetStatus("Passenger returned to land.")
+                                       End If
+                                   End Sub)
+            AudioManager.PlaySfx("Audio\SFX\Walking_On_Wood_Sound_Effect.mp3")
+            SetStatus("Passenger returning...")
+            Return
+        End If
+
+        If sprite.Mode <> SpriteMode.AtBank Then Return
 
         If ch.Side <> currentBank Then
             SetStatus("That character is on the other bank. Select from the boat's bank.")
             Return
         End If
 
-        If selectedCharacters.Contains(ch) Then
-            selectedCharacters.Remove(ch)
-            SetStatus("Passenger deselected.")
-        Else
-            If selectedCharacters.Count >= 2 Then
-                AudioManager.PlaySfx("Audio\SFX\Nope_Invalid_Move.mp3")
-                SetStatus("The boat can only carry up to 2 passengers.")
-                Return
-            End If
-            selectedCharacters.Add(ch)
-            SetStatus("Passenger selected. Select up to 2, then click Cross River.")
+        ' ---- cap at 2 boarded passengers ----
+        Dim boarded As Integer = 0
+        For Each c In characters
+            If c.OnBoat Then boarded += 1
+        Next
+
+        If boarded >= 2 Then
+            AudioManager.PlaySfx("Audio\SFX\Nope_Invalid_Move.mp3")
+            SetStatus("The boat can only carry up to 2 passengers.")
+            Return
         End If
 
-        sprite.IsSelected = selectedCharacters.Contains(ch)
+        ' ---- assign the next free boat slot, then walk aboard ----
+        Dim slot As Integer = boarded
+        Dim totalAfter As Integer = boarded + 1
+
+        Dim capturedSpriteB As CharacterSprite = sprite
+        Dim capturedChB As CharacterState = ch
+        Dim capturedSlot As Integer = slot
+        Dim capturedTotal As Integer = totalAfter
+
+        gamePanel.WalkSpriteTo(capturedSpriteB,
+                               Function() gamePanel.BoatSlotPoint(capturedSlot, capturedTotal),
+                               SpriteMode.OnBoat,
+                               Sub()
+                                   If characters.Contains(capturedChB) Then
+                                       capturedChB.OnBoat = True
+                                       ReflowBoatSlots()
+                                       SetStatus("Passenger boarded. Select another or click Cross River.")
+                                   End If
+                               End Sub)
+        AudioManager.PlaySfx("Audio\SFX\Walking_On_Wood_Sound_Effect.mp3")
+        SetStatus("Passenger walking to boat...")
     End Sub
+
+    ' Keeps boat-slot positions consistent when the set of boarded passengers changes.
+    Private Sub ReflowBoatSlots()
+        Dim onboard As New List(Of CharacterState)
+        For Each c In characters
+            If c.OnBoat Then onboard.Add(c)
+        Next
+        For i As Integer = 0 To onboard.Count - 1
+            Dim sp As CharacterSprite = gamePanel.FindSprite(onboard(i))
+            If sp IsNot Nothing Then
+                sp.BoatSlot = i
+                sp.BoatSlotCount = onboard.Count
+            End If
+        Next
+    End Sub
+
+    Private Function IsAnySpriteWalking() As Boolean
+        For Each ch In characters
+            Dim sp As CharacterSprite = gamePanel.FindSprite(ch)
+            If sp IsNot Nothing AndAlso sp.Mode = SpriteMode.Walking Then Return True
+        Next
+        Return False
+    End Function
+
+    Private Function BoardedPassengers() As List(Of CharacterState)
+        Return characters.Where(Function(c) c.OnBoat).ToList()
+    End Function
 
     ' ==================================================
     ' RULES (classic puzzle logic, independent of drawing)
@@ -207,8 +262,6 @@ Public Class Level1GameplayForm
         Dim rightInnocents As Integer = 0
         Dim rightMonsters As Integer = 0
 
-        ' Count everyone where they would stand AFTER the move: this checks both the
-        ' bank the boat leaves and the bank it arrives at.
         For Each ch In characters
             Dim finalSide As String = ch.Side
             If passengers.Contains(ch) Then finalSide = destBank
@@ -233,72 +286,47 @@ Public Class Level1GameplayForm
     End Function
 
     ' ==================================================
-    ' CROSSING SEQUENCE: board (walk) -> sail -> disembark (walk) -> commit
+    ' CROSSING SEQUENCE: sail (passengers already boarded) -> disembark (walk)
     ' ==================================================
     Private Sub CrossButton_Click(sender As Object, e As EventArgs)
         If isAnimating OrElse gameWon Then Return
 
-        If selectedCharacters.Count = 0 Then
-            SetStatus("Select at least one passenger before crossing.")
+        If IsAnySpriteWalking() Then
+            SetStatus("Please wait for passengers to finish moving.")
+            Return
+        End If
+
+        Dim boarded As List(Of CharacterState) = BoardedPassengers()
+        If boarded.Count = 0 Then
+            SetStatus("Click a passenger to board the boat first.")
             Return
         End If
 
         Dim dest As String = If(currentBank = "Right", "Left", "Right")
 
-        If Not IsMoveLegal(selectedCharacters, dest) Then
+        If Not IsMoveLegal(boarded, dest) Then
             AudioManager.PlaySfx("Audio\SFX\Nope_Invalid_Move.mp3")
             SetStatus("Invalid move " & ChrW(8212) & " monsters would outnumber innocents on a bank.")
             Return
         End If
 
-        StartCrossing(dest)
+        StartCrossing(dest, boarded)
     End Sub
 
-    Private Sub StartCrossing(dest As String)
+    Private Sub StartCrossing(dest As String, passengers As List(Of CharacterState))
         isAnimating = True
-        crossButton.Enabled = False
 
         crossingId += 1
         Dim myId As Integer = crossingId
 
-        crossingPassengers = New List(Of CharacterState)(selectedCharacters)
+        crossingPassengers = New List(Of CharacterState)(passengers)
         crossingDest = dest
-        boardedCount = 0
         landedCount = 0
-
-        Dim passengerCount As Integer = crossingPassengers.Count
-        SetStatus("Boarding...")
-        AudioManager.PlaySfx("Audio\SFX\Walking_On_Wood_Sound_Effect.mp3")
-
-        For i As Integer = 0 To passengerCount - 1
-            Dim slot As Integer = i
-            Dim passenger As CharacterState = crossingPassengers(i)
-            Dim sprite As CharacterSprite = gamePanel.FindSprite(passenger)
-            If sprite Is Nothing Then Continue For
-
-            sprite.BoatSlot = slot
-            sprite.BoatSlotCount = passengerCount
-            sprite.IsSelected = False
-            passenger.OnBoat = True
-
-            gamePanel.WalkSpriteTo(sprite,
-                                   Function() gamePanel.BoatSlotPoint(slot, passengerCount),
-                                   SpriteMode.OnBoat,
-                                   Sub() OnPassengerBoarded(myId))
-        Next
-    End Sub
-
-    Private Sub OnPassengerBoarded(id As Integer)
-        If id <> crossingId Then Return
-
-        boardedCount += 1
-        If boardedCount < crossingPassengers.Count Then Return
 
         SetStatus("Crossing the river...")
         AudioManager.PlaySfx("Audio\SFX\Canoe_Paddle_Sound_Effect.mp3")
 
-        Dim myId As Integer = id
-        gamePanel.SailBoatTo(crossingDest, Sub() OnBoatArrived(myId))
+        gamePanel.SailBoatTo(dest, Sub() OnBoatArrived(myId))
     End Sub
 
     Private Sub OnBoatArrived(id As Integer)
@@ -312,6 +340,7 @@ Public Class Level1GameplayForm
             Dim sprite As CharacterSprite = gamePanel.FindSprite(passenger)
             If sprite Is Nothing Then Continue For
 
+            ' Passengers keep their original SlotIndex on the destination bank.
             gamePanel.WalkSpriteTo(sprite,
                                    Function() gamePanel.BankSlotPoint(dest, sprite.SlotIndex),
                                    SpriteMode.AtBank,
@@ -334,17 +363,13 @@ Public Class Level1GameplayForm
     Private Sub CompleteCrossing()
         currentBank = crossingDest
         moveCount += 1
-        selectedCharacters.Clear()
         UpdateMoveCount()
         isAnimating = False
-        crossButton.Enabled = True
 
         If AllOnLeftBank() Then
             gameWon = True
-            crossButton.Enabled = False
             AudioManager.PlaySfx("Audio\SFX\Victory_Jingle.mp3")
             SetStatus("Victory! All characters reached the other side in " & moveCount & " move(s).")
-            ' Show the dialog after the animation tick finishes (not inside it).
             Me.BeginInvoke(New MethodInvoker(AddressOf ShowVictoryDialog))
         Else
             SetStatus("Crossing complete. Select the next passengers.")
@@ -364,6 +389,7 @@ Public Class Level1GameplayForm
     End Sub
 
     Private Sub BackButton_Click(sender As Object, e As EventArgs)
+        crossingId += 1
         Me.Close()
     End Sub
 
@@ -415,7 +441,7 @@ Public Class CharacterSprite
     Public Mode As SpriteMode = SpriteMode.AtBank
     Public Pos As PointF                    ' feet position (bottom-centre) in scene coordinates
     Public IsHovered As Boolean = False
-    Public IsSelected As Boolean = False
+    Public IsSelected As Boolean = False    ' kept for compatibility; not drawn anymore
     Public MoveFacing As FacingDirection = FacingDirection.FaceFront
     Public BoatSlot As Integer = 0
     Public BoatSlotCount As Integer = 1
@@ -425,21 +451,19 @@ Public Class CharacterSprite
     Friend ModeAfterWalk As SpriteMode = SpriteMode.AtBank
     Friend AnimMs As Double
     Friend LastAction As SpriteAction = SpriteAction.Idle
-    Friend Bounds As Rectangle              ' last drawn rectangle, used for mouse hit-testing
+    Friend Bounds As Rectangle
 
     Public Sub New(characterValue As CharacterState, slotIndexValue As Integer)
         Character = characterValue
         SlotIndex = slotIndexValue
         IsMonster = (characterValue.Type = "Monster")
-        AnimMs = slotIndexValue * 137.0   ' stagger idle animations so they are not in lock-step
+        AnimMs = slotIndexValue * 137.0
     End Sub
 End Class
 
 ''' <summary>
-''' Draws the whole scene on ONE surface (background, water, raft, then characters sorted
-''' by foot position). Because passengers are painted after the raft, they are always on top
-''' of it, and their position is derived from the raft's position every frame.
-''' One timer drives every animation.
+''' Draws the whole scene on ONE surface and drives every animation from one timer.
+''' The raft is drawn first; characters are then drawn back-to-front so passengers are on top.
 ''' </summary>
 Public Class GameScenePanel
     Inherits Panel
@@ -448,10 +472,10 @@ Public Class GameScenePanel
 
     ' ---- tuning constants ----
     Private Const RaftScale As Integer = 2
-    Private Const WalkSpeed As Double = 160.0        ' pixels per second
-    Private Const BoatSpeed As Double = 150.0        ' pixels per second
+    Private Const WalkSpeed As Double = 160.0
+    Private Const BoatSpeed As Double = 150.0
     Private Const BobAmplitude As Double = 2.0
-    Private Const DeckFootFraction As Single = 0.35F ' how far down the raft the feet stand (0 = top edge)
+    Private Const DeckFootFraction As Single = 0.35F
     Private Const RowSpacing As Integer = 90
     Private Const ColumnSpacing As Integer = 100
     Private Const BankEdgeMargin As Integer = 60
@@ -488,7 +512,6 @@ Public Class GameScenePanel
     Private ReadOnly _drawAttributes As New ImageAttributes()
     Private _handShown As Boolean = False
 
-    ''' <summary>Set by the form: decides which sprites should show the hand cursor.</summary>
     Public Property IsSelectable As Func(Of CharacterSprite, Boolean)
 
     Public Sub New()
@@ -496,7 +519,7 @@ Public Class GameScenePanel
                     ControlStyles.OptimizedDoubleBuffer Or ControlStyles.ResizeRedraw, True)
         Me.DoubleBuffered = True
 
-        _drawAttributes.SetWrapMode(WrapMode.TileFlipXY)   ' avoids faint edge lines when scaling pixel art
+        _drawAttributes.SetWrapMode(WrapMode.TileFlipXY)
 
         _skyTile = GameAssets.GetSheet("enviroment\sky.png")
         _bankTile = GameAssets.GetSheet("tiles\Grass_rocks.png")
@@ -511,9 +534,6 @@ Public Class GameScenePanel
         _animTimer.Start()
     End Sub
 
-    ' ==================================================
-    ' PUBLIC API (used by the form)
-    ' ==================================================
     Public ReadOnly Property LeftBankRect As Rectangle
         Get
             Return _leftBank
@@ -555,7 +575,6 @@ Public Class GameScenePanel
         Return _sprites.FirstOrDefault(Function(sp) sp.Character Is ch)
     End Function
 
-    ''' <summary>Makes a sprite walk (walk animation, facing its movement direction) to a target.</summary>
     Public Sub WalkSpriteTo(sprite As CharacterSprite, target As Func(Of PointF), modeAfter As SpriteMode, onArrive As Action)
         sprite.WalkTarget = target
         sprite.ModeAfterWalk = modeAfter
@@ -568,7 +587,6 @@ Public Class GameScenePanel
         End If
     End Sub
 
-    ''' <summary>Sails the raft to the given bank; riders face the direction of travel.</summary>
     Public Sub SailBoatTo(destSide As String, onArrive As Action)
         _boatTargetSide = destSide
         _boatFacing = If(destSide = "Left", FacingDirection.FaceLeft, FacingDirection.FaceRight)
@@ -589,7 +607,6 @@ Public Class GameScenePanel
         Return New PointF(x, y)
     End Function
 
-    ''' <summary>Where a passenger's feet go on the raft deck. Follows the raft (and its bobbing) every frame.</summary>
     Public Function BoatSlotPoint(slot As Integer, count As Integer) As PointF
         Dim fraction As Single = 0.5F
         If count > 1 Then fraction = If(slot = 0, 0.3F, 0.7F)
@@ -627,7 +644,6 @@ Public Class GameScenePanel
         Return CSng(Math.Sin(_bobPhase) * BobAmplitude)
     End Function
 
-    ' Y of the feet line for a character standing level with the raft deck (no bobbing).
     Private Function GroundLineY() As Single
         Return CenterY() - RaftHeight / 2.0F + RaftHeight * DeckFootFraction
     End Function
@@ -658,7 +674,7 @@ Public Class GameScenePanel
     End Sub
 
     ' ==================================================
-    ' ANIMATION (one timer for everything)
+    ' ANIMATION
     ' ==================================================
     Private Sub OnAnimTick(sender As Object, e As EventArgs)
         If Me.IsDisposed Then Return
@@ -714,7 +730,7 @@ Public Class GameScenePanel
         Dim currentAction As SpriteAction = If(s.Mode = SpriteMode.Walking, SpriteAction.Walk, SpriteAction.Idle)
         If currentAction <> s.LastAction Then
             s.LastAction = currentAction
-            s.AnimMs = 0          ' a new action always starts from its first frame
+            s.AnimMs = 0
         Else
             s.AnimMs += dtMs
         End If
@@ -745,7 +761,6 @@ Public Class GameScenePanel
         End If
     End Sub
 
-    ' Which way a sprite faces. Movement and boat travel always win over mouse hover.
     Private Function GetFacing(s As CharacterSprite) As FacingDirection
         Select Case s.Mode
             Case SpriteMode.Walking
@@ -769,8 +784,6 @@ Public Class GameScenePanel
         Return Nothing
     End Function
 
-    ' Hover is re-evaluated every tick from the real cursor position, so a sprite that walks
-    ' away from (or arrives under) a stationary cursor updates correctly.
     Private Sub UpdateHover()
         Dim clientPoint As Point = Me.PointToClient(Control.MousePosition)
         Dim hit As CharacterSprite = Nothing
@@ -782,7 +795,7 @@ Public Class GameScenePanel
             If _hoveredSprite IsNot Nothing Then _hoveredSprite.IsHovered = True
         End If
 
-        Dim showHand As Boolean = (hit IsNot Nothing) AndAlso hit.Mode = SpriteMode.AtBank AndAlso
+        Dim showHand As Boolean = (hit IsNot Nothing) AndAlso
                                   (IsSelectable Is Nothing OrElse IsSelectable.Invoke(hit))
         If showHand <> _handShown Then
             _handShown = showHand
@@ -827,8 +840,6 @@ Public Class GameScenePanel
         DrawWater(g)
         DrawBoat(g)
 
-        ' Painter's algorithm: boat first, then characters from back (small Y) to front.
-        ' Passengers are therefore always painted over the raft.
         _drawOrder = _sprites.OrderBy(Function(sp) sp.Pos.Y).ToList()
         For Each s In _drawOrder
             DrawSprite(g, s)
@@ -925,12 +936,8 @@ Public Class GameScenePanel
 
         g.DrawImage(img, dest, 0, 0, img.Width, img.Height, GraphicsUnit.Pixel, _drawAttributes)
 
-        If s.IsSelected Then
-            Dim outlineColor As Color = If(s.IsMonster, Color.FromArgb(230, 90, 90), Color.FromArgb(90, 160, 255))
-            Using outlinePen As New Pen(outlineColor, 3)
-                g.DrawRectangle(outlinePen, dest.X - 4, dest.Y - 4, dest.Width + 8, dest.Height + 8)
-            End Using
-        End If
+        ' NOTE: the previous red/blue selection outline has been intentionally removed.
+        ' Player feedback now comes from the walking animation onto/off the boat.
     End Sub
 
     Private Sub TileImage(g As Graphics, img As Image, area As Rectangle)
