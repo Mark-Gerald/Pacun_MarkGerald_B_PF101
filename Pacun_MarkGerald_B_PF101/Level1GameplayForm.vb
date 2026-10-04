@@ -28,7 +28,10 @@ Public Class Level1GameplayForm
         gamePanel = New GameScenePanel() With {.Dock = DockStyle.Fill}
         Me.Controls.Add(gamePanel)
 
+        ' All three connections between the scene and this form. If any of these is missing,
+        ' the matching clicks will play a sound but do nothing.
         AddHandler gamePanel.SpriteClicked, AddressOf GamePanel_SpriteClicked
+        AddHandler gamePanel.HudButtonClicked, AddressOf GamePanel_HudButtonClicked
         AddHandler gamePanel.EndButtonClicked, AddressOf GamePanel_EndButtonClicked
         AddHandler Me.FormClosed, AddressOf Level1GameplayForm_FormClosed
 
@@ -71,7 +74,11 @@ Public Class Level1GameplayForm
         gamePanel.HudCrossEnabled = Not (isSailing OrElse gameOver)
     End Sub
 
+    ' ==================================================
+    ' BUTTONS (upper-right HUD, and the Try Again / Menu buttons on the end screen)
+    ' ==================================================
     Private Sub GamePanel_HudButtonClicked(buttonId As String)
+        Debug.WriteLine("Level1GameplayForm: HUD button '" & buttonId & "' clicked")
         Select Case buttonId
             Case "cross"
                 TryCross()
@@ -83,6 +90,7 @@ Public Class Level1GameplayForm
     End Sub
 
     Private Sub GamePanel_EndButtonClicked(buttonId As String)
+        Debug.WriteLine("Level1GameplayForm: end-screen button '" & buttonId & "' clicked")
         Select Case buttonId
             Case "retry"
                 InitializeGame()
@@ -264,7 +272,7 @@ Public Class Level1GameplayForm
         gamePanel.StartAttack(here.Where(Function(c) c.Type = "Monster").ToList(),
                               here.Where(Function(c) c.Type = "Innocent").ToList())
 
-        statusText = "The goblins outnumbered the farmers on the " & bank.ToLower() & " bank and attacked! Press RESET to try again."
+        statusText = "The goblins outnumbered the farmers on the " & bank.ToLower() & " bank and attacked!"
         gamePanel.ShowEndScreen(False, "DEFEAT", "The goblins outnumbered the farmers!", 1000)
         UpdateHud()
     End Sub

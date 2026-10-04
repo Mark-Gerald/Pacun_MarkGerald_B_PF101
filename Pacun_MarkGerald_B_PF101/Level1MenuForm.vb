@@ -24,8 +24,12 @@ Public Class Level1MenuForm
 
     Public Sub New()
         Me.Text = "Level 1 " & ChrW(8212) & " River Crossing"
-        Me.Size = New Size(900, 650)
-        Me.MinimumSize = New Size(700, 500)
+
+        ' Taller window so the How to Play panel always has room. Clamped for short screens.
+        Dim workArea As Rectangle = Screen.PrimaryScreen.WorkingArea
+        Me.Size = New Size(900, Math.Min(780, workArea.Height - 40))
+        Me.MinimumSize = New Size(700, Math.Min(640, workArea.Height - 40))
+
         Me.StartPosition = FormStartPosition.CenterParent
         Me.FormBorderStyle = FormBorderStyle.Sizable
         Me.BackColor = Color.FromArgb(120, 190, 110)
@@ -41,7 +45,7 @@ Public Class Level1MenuForm
                                  AudioManager.PlayMusic("Audio\Music\Wet_Hands.mp3", True)
                                  scenePanel.GoToLayer(MenuLayer.Main)
                              End Sub
-        ' Don't spend CPU animating water while this form is hidden behind the game.
+        ' Don't spend CPU animating water while this form is hidden behind a game.
         AddHandler Me.VisibleChanged, Sub(s, ev) scenePanel.SetRunning(Me.Visible)
         AddHandler Me.FormClosed, AddressOf Level1MenuForm_FormClosed
     End Sub
@@ -53,17 +57,15 @@ Public Class Level1MenuForm
         scenePanel.GoToLayer(MenuLayer.None, Sub() OpenChildForm(New Level1GameplayForm()))
     End Sub
 
-
-
-    Private Sub OnExitClicked()
-        Me.Close()
-    End Sub
-
     Private Sub OnNextGameClicked()
         If isTransitioning Then Return
         isTransitioning = True
         ' <-- If your Jump Knight menu class has a different name, change it on the next line.
         scenePanel.GoToLayer(MenuLayer.None, Sub() OpenChildForm(New Level2MenuForm(), True))
+    End Sub
+
+    Private Sub OnExitClicked()
+        Me.Close()
     End Sub
 
     Private Sub OpenChildForm(childForm As Form, Optional stopMenuMusic As Boolean = False)
@@ -77,7 +79,6 @@ Public Class Level1MenuForm
                                                      scenePanel.GoToLayer(MenuLayer.Main)
                                                  End If
                                              End Sub
-            ' Stops the River Crossing music so it doesn't play under the other game.
             If stopMenuMusic Then AudioManager.StopMusic()
             Me.Hide()
             childForm.Show()
@@ -100,10 +101,10 @@ Public Class Level1MenuForm
 End Class
 
 ''' <summary>
-''' The whole menu screen on ONE surface: the (never-fading) river background, plus three
-''' layers -- Main, Settings, How To Play. Only the active layer's objects fade. Each layer is
-''' drawn at full opacity and, during a fade, composited with an alpha, so every object in the
-''' layer (title, buttons, panels, sliders) fades together.
+''' The whole menu screen on ONE surface: the (never-fading) river background, plus three layers --
+''' Main, Settings, How To Play. Only the active layer's objects fade. Settings and How To Play share
+''' one green/blue nature theme. The How To Play panel is measured at draw time, so its button can
+''' never overlap its text.
 ''' </summary>
 Public Class MenuScenePanel
     Inherits Panel
@@ -113,6 +114,20 @@ Public Class MenuScenePanel
     Public Event ExitClicked()
 
     Private Const FadeSeconds As Double = 0.22
+    Private Const HowToSidePad As Integer = 36
+    Private Const HowToChrome As Integer = 168    ' header band + gaps + button + bottom margin
+
+    Private Class HowToSection
+        Public ReadOnly Heading As String
+        Public ReadOnly Body As String
+        Public ReadOnly Accent As Color
+
+        Public Sub New(headingValue As String, bodyValue As String, accentValue As Color)
+            Heading = headingValue
+            Body = bodyValue
+            Accent = accentValue
+        End Sub
+    End Class
 
     Private ReadOnly _backdrop As New RiverBackdrop()
     Private _timer As Timer
@@ -128,6 +143,7 @@ Public Class MenuScenePanel
     Private ReadOnly _mainButtons As New List(Of PixelButtonDef)
     Private ReadOnly _settingsButtons As New List(Of PixelButtonDef)
     Private ReadOnly _howToButtons As New List(Of PixelButtonDef)
+    Private ReadOnly _howToSections As New List(Of HowToSection)
     Private _hover As PixelButtonDef = Nothing
     Private _pressed As PixelButtonDef = Nothing
 
@@ -143,6 +159,7 @@ Public Class MenuScenePanel
     Private ReadOnly _headerFont As New Font("Segoe UI", 18.0F, FontStyle.Bold)
     Private ReadOnly _captionFont As New Font("Segoe UI", 10.0F, FontStyle.Bold)
     Private ReadOnly _bodyFont As New Font("Segoe UI", 10.5F)
+    Private ReadOnly _bodySmallFont As New Font("Segoe UI", 9.0F)
     Private ReadOnly _centerFormat As New StringFormat() With {.Alignment = StringAlignment.Center, .LineAlignment = StringAlignment.Center}
 
     Private _buffer As Bitmap = Nothing
@@ -157,15 +174,34 @@ Public Class MenuScenePanel
         _mainButtons.Add(New PixelButtonDef("next", "NEXT GAME", Color.FromArgb(150, 90, 190)))
         _mainButtons.Add(New PixelButtonDef("exit", "EXIT", Color.FromArgb(200, 70, 60)))
         _mainButtons.Add(New PixelButtonDef("howto", "HOW TO PLAY", Color.FromArgb(230, 150, 40)))
-        _settingsButtons.Add(New PixelButtonDef("back", "BACK TO MENU", Color.FromArgb(24, 24, 30)))
+        _settingsButtons.Add(New PixelButtonDef("back", "BACK TO MENU", Color.FromArgb(46, 139, 87)))
         _howToButtons.Add(New PixelButtonDef("back", "BACK", Color.FromArgb(46, 139, 87)))
 
+        BuildHowToSections()
         LayoutControls()
 
         _lastMs = _clock.ElapsedMilliseconds
         _timer = New Timer() With {.Interval = 30}
         AddHandler _timer.Tick, AddressOf OnTick
         _timer.Start()
+    End Sub
+
+    Private Sub BuildHowToSections()
+        Dim bullet As String = ChrW(8226) & " "
+        _howToSections.Add(New HowToSection("GOAL",
+            "Get all 3 farmers and all 3 goblins from the right bank to the left bank.",
+            Color.FromArgb(36, 110, 60)))
+        _howToSections.Add(New HowToSection("HOW TO PLAY",
+            bullet & "Click a character to put them on the boat. Click someone on the boat to take them off." & vbLf &
+            bullet & "The boat carries 1 or 2 passengers and can't sail empty." & vbLf &
+            bullet & "Press CROSS RIVER to sail.",
+            Color.FromArgb(35, 105, 165)))
+        _howToSections.Add(New HowToSection("HOW YOU LOSE",
+            "If goblins outnumber the farmers on a bank that has at least one farmer, the goblins attack and you lose.",
+            Color.FromArgb(150, 88, 38)))
+        _howToSections.Add(New HowToSection("MOVES",
+            "Every character you pick, every unloading, and every boat trip counts as one move.",
+            Color.FromArgb(30, 128, 120)))
     End Sub
 
     ' ==================================================
@@ -223,11 +259,10 @@ Public Class MenuScenePanel
         _sfxTrack = New Rectangle(_settingsPanel.X + 44, _settingsPanel.Y + 226, Math.Max(10, pw - 88), 18)
         _settingsButtons(0).Rect = New Rectangle(_settingsPanel.X + (pw - 220) \ 2, _settingsPanel.Bottom - 70, 220, 46)
 
-        ' How-to panel
-        Dim hw As Integer = Math.Min(580, w - 40)
-        Dim hh As Integer = Math.Min(470, h - 40)
-        _howToPanel = New Rectangle((w - hw) \ 2, (h - hh) \ 2, hw, hh)
-        _howToButtons(0).Rect = New Rectangle(_howToPanel.X + (hw - 200) \ 2, _howToPanel.Bottom - 66, 200, 46)
+        ' How-to panel: left edge and width are set here; its height is measured at draw time.
+        Dim hw As Integer = Math.Min(600, w - 40)
+        _howToPanel = New Rectangle((w - hw) \ 2, 20, hw, 400)
+        _howToButtons(0).Rect = New Rectangle(_howToPanel.X + (hw - 200) \ 2, _howToPanel.Bottom - 70, 200, 46)
     End Sub
 
     Protected Overrides Sub OnResize(e As EventArgs)
@@ -420,6 +455,8 @@ Public Class MenuScenePanel
         If _buffer Is Nothing OrElse _buffer.Width <> w OrElse _buffer.Height <> h Then
             If _buffer IsNot Nothing Then _buffer.Dispose()
             _buffer = New Bitmap(w, h, PixelFormat.Format32bppArgb)
+            ' Match the screen's DPI so text measures and sizes the same during a fade as at rest.
+            _buffer.SetResolution(g.DpiX, g.DpiY)
         End If
         Using bg As Graphics = Graphics.FromImage(_buffer)
             bg.Clear(Color.Transparent)
@@ -456,34 +493,46 @@ Public Class MenuScenePanel
         Next
     End Sub
 
-    Private Sub DrawPanelFrame(g As Graphics, panel As Rectangle, title As String)
-        Using bodyBrush As New SolidBrush(Color.FromArgb(245, 245, 245))
-            g.FillRectangle(bodyBrush, panel)
+    ' Shared green/blue frame for Settings and How To Play.
+    Private Sub DrawNaturePanelFrame(g As Graphics, area As Rectangle, title As String)
+        Using bodyBrush As New SolidBrush(Color.FromArgb(234, 245, 224))
+            g.FillRectangle(bodyBrush, area)
         End Using
-        Using headerBrush As New SolidBrush(Color.FromArgb(30, 30, 36))
-            g.FillRectangle(headerBrush, New Rectangle(panel.X, panel.Y, panel.Width, 70))
+        Using headerBrush As New SolidBrush(Color.FromArgb(42, 104, 62))
+            g.FillRectangle(headerBrush, New Rectangle(area.X, area.Y, area.Width, 70))
         End Using
-        g.DrawString(title, _headerFont, Brushes.White, New RectangleF(panel.X, panel.Y, panel.Width, 70), _centerFormat)
-        Using outlinePen As New Pen(Color.FromArgb(30, 20, 10), 3)
-            g.DrawRectangle(outlinePen, panel.X + 1, panel.Y + 1, panel.Width - 3, panel.Height - 3)
+        Using waterBrush As New SolidBrush(Color.FromArgb(70, 150, 205))
+            g.FillRectangle(waterBrush, New Rectangle(area.X, area.Y + 70, area.Width, 6))
+        End Using
+        Using titleBrush As New SolidBrush(Color.FromArgb(240, 250, 225))
+            g.DrawString(title, _headerFont, titleBrush, New RectangleF(area.X, area.Y, area.Width, 70), _centerFormat)
+        End Using
+        Using outlinePen As New Pen(Color.FromArgb(24, 66, 40), 3)
+            g.DrawRectangle(outlinePen, area.X + 1, area.Y + 1, area.Width - 3, area.Height - 3)
         End Using
     End Sub
 
+    ' ---------- Settings ----------
     Private Sub DrawSettingsLayer(g As Graphics)
         Dim p As Rectangle = _settingsPanel
-        DrawPanelFrame(g, p, "SETTINGS")
+        DrawNaturePanelFrame(g, p, "SETTINGS")
 
-        Using captionBrush As New SolidBrush(Color.FromArgb(40, 40, 40))
-            g.DrawString("BACKGROUND MUSIC VOLUME", _captionFont, captionBrush, p.X + 44, p.Y + 90)
-            g.DrawString("SOUND EFFECTS VOLUME", _captionFont, captionBrush, p.X + 44, p.Y + 196)
+        Dim musicAccent As Color = Color.FromArgb(70, 150, 205)   ' river blue
+        Dim sfxAccent As Color = Color.FromArgb(76, 160, 90)      ' leaf green
+
+        Using musicBrush As New SolidBrush(Color.FromArgb(35, 105, 165))
+            g.DrawString("BACKGROUND MUSIC VOLUME", _captionFont, musicBrush, p.X + 44, p.Y + 92)
+        End Using
+        Using sfxBrush As New SolidBrush(Color.FromArgb(36, 110, 60))
+            g.DrawString("SOUND EFFECTS VOLUME", _captionFont, sfxBrush, p.X + 44, p.Y + 198)
         End Using
 
         Dim musicValue As Integer = GameSettings.GetInstance().MusicVolume
         Dim sfxValue As Integer = GameSettings.GetInstance().SfxVolume
-        DrawSlider(g, _musicTrack, musicValue)
-        DrawSlider(g, _sfxTrack, sfxValue)
+        DrawNatureSlider(g, _musicTrack, musicValue, musicAccent)
+        DrawNatureSlider(g, _sfxTrack, sfxValue, sfxAccent)
 
-        Using valueBrush As New SolidBrush(Color.FromArgb(80, 80, 80))
+        Using valueBrush As New SolidBrush(Color.FromArgb(38, 62, 46))
             g.DrawString(musicValue & "%", _captionFont, valueBrush, p.X + 44, _musicTrack.Bottom + 10)
             g.DrawString(sfxValue & "%", _captionFont, valueBrush, p.X + 44, _sfxTrack.Bottom + 10)
         End Using
@@ -491,85 +540,83 @@ Public Class MenuScenePanel
         DrawPixelButton(g, _settingsButtons(0), _buttonFont, _settingsButtons(0) Is _hover, _settingsButtons(0) Is _pressed)
     End Sub
 
-    Private Sub DrawSlider(g As Graphics, track As Rectangle, value As Integer)
+    Private Sub DrawNatureSlider(g As Graphics, track As Rectangle, value As Integer, fillColor As Color)
         Dim fillWidth As Integer = CInt(track.Width * value / 100.0)
 
-        Using trackBrush As New SolidBrush(Color.FromArgb(11, 143, 14))
+        Using trackBrush As New SolidBrush(Color.FromArgb(200, 222, 200))
             g.FillRectangle(trackBrush, track)
         End Using
         If fillWidth > 0 Then
-            Using fillBrush As New SolidBrush(Color.FromArgb(66, 133, 200))
+            Using fillBrush As New SolidBrush(fillColor)
                 g.FillRectangle(fillBrush, track.X, track.Y, fillWidth, track.Height)
             End Using
         End If
-        Using outlinePen As New Pen(Color.FromArgb(60, 60, 70), 2)
+        Using outlinePen As New Pen(Color.FromArgb(24, 66, 40), 2)
             g.DrawRectangle(outlinePen, track.X, track.Y, track.Width, track.Height)
         End Using
 
         Dim thumb As New Rectangle(track.X + fillWidth - 7, track.Y - 6, 14, track.Height + 12)
-        Using thumbBrush As New SolidBrush(Color.FromArgb(30, 30, 36))
+        Using thumbBrush As New SolidBrush(Color.FromArgb(24, 66, 40))
             g.FillRectangle(thumbBrush, thumb)
         End Using
-        Using lightBrush As New SolidBrush(Color.FromArgb(245, 245, 245))
+        Using lightBrush As New SolidBrush(Color.FromArgb(234, 245, 224))
             g.FillRectangle(lightBrush, thumb.X + 3, thumb.Y + 3, thumb.Width - 6, thumb.Height - 6)
         End Using
     End Sub
 
-    Private Sub DrawNaturePanelFrame(g As Graphics, panel As Rectangle, title As String)
-        Using bodyBrush As New SolidBrush(Color.FromArgb(234, 245, 224))
-            g.FillRectangle(bodyBrush, panel)
-        End Using
-        Using headerBrush As New SolidBrush(Color.FromArgb(42, 104, 62))
-            g.FillRectangle(headerBrush, New Rectangle(panel.X, panel.Y, panel.Width, 70))
-        End Using
-        Using waterBrush As New SolidBrush(Color.FromArgb(70, 150, 205))
-            g.FillRectangle(waterBrush, New Rectangle(panel.X, panel.Y + 70, panel.Width, 6))
-        End Using
-        Using titleBrush As New SolidBrush(Color.FromArgb(240, 250, 225))
-            g.DrawString(title, _headerFont, titleBrush, New RectangleF(panel.X, panel.Y, panel.Width, 70), _centerFormat)
-        End Using
-        Using outlinePen As New Pen(Color.FromArgb(24, 66, 40), 3)
-            g.DrawRectangle(outlinePen, panel.X + 1, panel.Y + 1, panel.Width - 3, panel.Height - 3)
-        End Using
-    End Sub
+    ' ---------- How to play ----------
+    ' Total height of every section's heading + wrapped text at the given font and width.
+    Private Function MeasureHowToContent(g As Graphics, font As Font, width As Single) As Single
+        Dim total As Single = 0
+        For Each section In _howToSections
+            Dim size As SizeF = g.MeasureString(section.Body, font, CInt(width))
+            total += 22 + size.Height + 12
+        Next
+        Return total
+    End Function
 
     Private Sub DrawHowToLayer(g As Graphics)
+        Dim panelW As Integer = _howToPanel.Width
+        Dim bodyWidth As Single = panelW - HowToSidePad * 2
+        Dim available As Integer = Me.ClientSize.Height - 16
+
+        ' Measure with the real Graphics so the panel is exactly tall enough on any display scaling.
+        ' If the window is too short for the normal text size, fall back to the smaller font.
+        Dim bodyFont As Font = _bodyFont
+        Dim contentH As Single = MeasureHowToContent(g, bodyFont, bodyWidth)
+        If contentH + HowToChrome > available Then
+            bodyFont = _bodySmallFont
+            contentH = MeasureHowToContent(g, bodyFont, bodyWidth)
+        End If
+
+        Dim panelH As Integer = Math.Min(available, CInt(Math.Ceiling(contentH)) + HowToChrome)
+        Dim panelTop As Integer = Math.Max(8, (Me.ClientSize.Height - panelH) \ 2)
+        _howToPanel = New Rectangle(_howToPanel.X, panelTop, panelW, panelH)
         Dim p As Rectangle = _howToPanel
+
         DrawNaturePanelFrame(g, p, "HOW TO PLAY")
 
-        Dim x As Single = p.X + 36
-        Dim y As Single = p.Y + 92
-        Dim w As Single = p.Width - 72
-        Dim bullet As String = ChrW(8226) & " "
+        Dim x As Single = p.X + HowToSidePad
+        Dim y As Single = p.Y + 94
+        For Each section In _howToSections
+            DrawNatureSection(g, section, bodyFont, x, y, bodyWidth)
+        Next
 
-        DrawNatureSection(g, "GOAL",
-                          "Get all 3 farmers and all 3 goblins from the right bank to the left bank.",
-                          Color.FromArgb(36, 110, 60), x, y, w)
-        DrawNatureSection(g, "HOW TO PLAY",
-                          bullet & "Click a character to put them on the boat. Click someone on the boat to take them off." & vbLf &
-                          bullet & "The boat carries 1 or 2 passengers and can't sail empty." & vbLf &
-                          bullet & "Press CROSS RIVER to sail.",
-                          Color.FromArgb(35, 105, 165), x, y, w)
-        DrawNatureSection(g, "HOW YOU LOSE",
-                          "If goblins outnumber the farmers on a bank that has at least one farmer, the goblins attack and you lose.",
-                          Color.FromArgb(150, 88, 38), x, y, w)
-        DrawNatureSection(g, "MOVES",
-                          "Every character you pick, every unloading, and every boat trip counts as one move.",
-                          Color.FromArgb(30, 128, 120), x, y, w)
-
+        ' The button always sits below the measured text, never over it.
+        _howToButtons(0).Rect = New Rectangle(p.X + (panelW - 200) \ 2, p.Bottom - 70, 200, 46)
         DrawPixelButton(g, _howToButtons(0), _buttonFont, _howToButtons(0) Is _hover, _howToButtons(0) Is _pressed)
     End Sub
 
-    Private Sub DrawNatureSection(g As Graphics, heading As String, body As String, accent As Color,
+    Private Sub DrawNatureSection(g As Graphics, section As HowToSection, font As Font,
                                   x As Single, ByRef y As Single, width As Single)
-        Using accentBrush As New SolidBrush(accent)
+        Using accentBrush As New SolidBrush(section.Accent)
             g.FillRectangle(accentBrush, x, y + 4, 12, 12)
-            g.DrawString(heading, _captionFont, accentBrush, x + 20, y)
+            g.DrawString(section.Heading, _captionFont, accentBrush, x + 20, y)
         End Using
         y += 22
-        Dim size As SizeF = g.MeasureString(body, _bodyFont, CInt(width))
+        Dim size As SizeF = g.MeasureString(section.Body, font, CInt(width))
         Using bodyBrush As New SolidBrush(Color.FromArgb(38, 62, 46))
-            g.DrawString(body, _bodyFont, bodyBrush, New RectangleF(x, y, width, size.Height + 4))
+            g.DrawString(section.Body, font, bodyBrush, New RectangleF(x, y, width, size.Height + 4))
         End Using
         y += size.Height + 12
     End Sub
@@ -588,6 +635,7 @@ Public Class MenuScenePanel
             _headerFont.Dispose()
             _captionFont.Dispose()
             _bodyFont.Dispose()
+            _bodySmallFont.Dispose()
             _centerFormat.Dispose()
         End If
         MyBase.Dispose(disposing)
