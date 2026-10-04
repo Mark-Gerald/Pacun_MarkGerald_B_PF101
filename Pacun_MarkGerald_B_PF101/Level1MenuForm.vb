@@ -21,6 +21,7 @@ Public Class Level1MenuForm
 
     Private scenePanel As MenuScenePanel
     Private isTransitioning As Boolean = False
+    Private Const MenuMusic As String = "Audio\Music\Wet_Hands.mp3"
 
     Public Sub New()
         Me.Text = "Level 1 " & ChrW(8212) & " River Crossing"
@@ -42,7 +43,7 @@ Public Class Level1MenuForm
         AddHandler scenePanel.ExitClicked, AddressOf OnExitClicked
 
         AddHandler Me.Shown, Sub(s, ev)
-                                 AudioManager.PlayMusic("Audio\Music\Wet_Hands.mp3", True)
+                                 AudioManager.PlayMusic(MenuMusic, True)
                                  scenePanel.GoToLayer(MenuLayer.Main)
                              End Sub
         ' Don't spend CPU animating water while this form is hidden behind a game.
@@ -74,8 +75,8 @@ Public Class Level1MenuForm
                                                  isTransitioning = False
                                                  If Not Me.IsDisposed Then
                                                      Me.Show()
-                                                     ' No-op if this track is already playing; restores it after Jump Knight.
-                                                     AudioManager.PlayMusic("Audio\Music\Wet Hands.mp3", True)
+                                                     ' Brings the menu music back after a game (stops whatever the game was playing).
+                                                     AudioManager.PlayMusic(MenuMusic, True)
                                                      scenePanel.GoToLayer(MenuLayer.Main)
                                                  End If
                                              End Sub
@@ -85,7 +86,7 @@ Public Class Level1MenuForm
         Catch ex As Exception
             isTransitioning = False
             Me.Show()
-            AudioManager.PlayMusic("Audio\Music\Wet Hands.mp3", True)
+            AudioManager.PlayMusic(MenuMusic, True)
             scenePanel.GoToLayer(MenuLayer.Main)
             MessageBox.Show("Could not open the next screen: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try

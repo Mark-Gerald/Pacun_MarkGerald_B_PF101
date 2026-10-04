@@ -76,6 +76,7 @@
             .Margin = New Padding(0)
         }
         navPanel.Controls.Add(navLeftFlow)
+        BuildDigitalClockButton()
 
         lessonsButton = New Button() With {
             .Text = "Lessons  ▾",
@@ -218,7 +219,7 @@
             .Height = 300,
             .Padding = New Padding(48, 36, 48, 36),
             .Margin = New Padding(0),
-            .BackColor = Color.Transparent,
+            .BackColor = Color.FromArgb(26, 26, 28),
             .AutoSize = False
         }
         AddHandler headerPanel.Paint, AddressOf HeaderPanel_Paint
@@ -228,7 +229,8 @@
             .ForeColor = Color.White,
             .BackColor = Color.Transparent,
             .Font = New Font("Segoe UI", 28.0F, FontStyle.Bold),
-            .AutoSize = True
+            .AutoSize = True,
+            .Visible = False
         }
         headerPanel.Controls.Add(titleLabel)
 
@@ -238,7 +240,8 @@
             .BackColor = Color.Transparent,
             .Font = New Font("Segoe UI", 11.0F),
             .AutoSize = False,
-            .Size = New Size(760, 70)
+            .Size = New Size(760, 70),
+            .Visible = False
         }
         headerPanel.Controls.Add(descLabel)
 
@@ -847,6 +850,7 @@
                                           Catch
                                           End Try
                                           headerBackgroundCache = Nothing
+                                          headerBackgroundCache = Nothing
                                       End If
                                   End Sub
 
@@ -898,6 +902,17 @@
         If headerBackgroundCache IsNot Nothing Then
             e.Graphics.DrawImageUnscaled(headerBackgroundCache, 0, 0)
         End If
+
+        ' Title and description are painted here, in the same pass as the gradient.
+        ' (They used to be transparent Labels, which break when Windows repaints the form in pieces.)
+        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit
+        Using titleBrush As New SolidBrush(titleLabel.ForeColor)
+            g.DrawString(titleLabel.Text, titleLabel.Font, titleBrush, titleLabel.Left, titleLabel.Top)
+        End Using
+        Using descBrush As New SolidBrush(descLabel.ForeColor)
+            g.DrawString(descLabel.Text, descLabel.Font, descBrush,
+                         New RectangleF(descLabel.Left, descLabel.Top, descLabel.Width, descLabel.Height))
+        End Using
     End Sub
 
     ' --- Button handlers (placeholders) ---
@@ -1730,6 +1745,7 @@
     End Sub
 
     Private Sub EnableDoubleBuffering(ctrl As Control)
+        AddHandler Me.Activated, Sub(s, ev) headerPanel.Invalidate(True)
         Try
             If ctrl Is Nothing Then Return
             Dim prop = ctrl.GetType().GetProperty("DoubleBuffered", Reflection.BindingFlags.Instance Or Reflection.BindingFlags.NonPublic)

@@ -17,6 +17,7 @@ Public Class Level1GameplayForm
     Private moveCount As Integer = 0
     Private sailId As Integer = 0                                    ' invalidates callbacks after Reset
     Private statusText As String = ""
+    Private Const GameplayMusic As String = "Audio\Music\Cross_River_Gameplay_Music_Track.mp3"
 
     Public Sub New()
         Me.Text = "Level 1 " & ChrW(8212) & " River Crossing"
@@ -35,6 +36,8 @@ Public Class Level1GameplayForm
         AddHandler gamePanel.EndButtonClicked, AddressOf GamePanel_EndButtonClicked
         AddHandler Me.FormClosed, AddressOf Level1GameplayForm_FormClosed
 
+        ' The menu music must stop here even if the gameplay track file is missing.
+        AudioManager.StopMusic()
         InitializeGame()
     End Sub
 
@@ -60,6 +63,10 @@ Public Class Level1GameplayForm
 
         gamePanel.ResetScene(characters)
         SetStatus("Click a character to put them on the boat.")
+
+        ' Does nothing if the gameplay track is already playing (HUD Reset).
+        ' After a win or loss the music was stopped, so TRY AGAIN starts it again from the beginning.
+        AudioManager.PlayMusic(GameplayMusic, True)
     End Sub
 
     Private Sub SetStatus(message As String)
@@ -266,6 +273,7 @@ Public Class Level1GameplayForm
 
     Private Sub LoseGame(bank As String)
         gameOver = True
+        AudioManager.StopMusic()
         AudioManager.PlaySfx("Audio\SFX\Failure_in_the_game_Sound_effect.mp3")
 
         Dim here As List(Of CharacterState) = CharactersCountedAt(bank)
@@ -279,6 +287,7 @@ Public Class Level1GameplayForm
 
     Private Sub WinGame()
         gameOver = True
+        AudioManager.StopMusic()
         AudioManager.PlaySfx("Audio\SFX\Victory_Jingle.mp3")
 
         ' Everyone still on the boat steps onto the bank (free: not a counted move).
@@ -300,6 +309,7 @@ Public Class Level1GameplayForm
     Private Sub Level1GameplayForm_FormClosed(sender As Object, e As FormClosedEventArgs)
         sailId += 1
         gamePanel.StopAnimation()
+        AudioManager.StopMusic()   ' the menu restores its own music right after this
     End Sub
 
 End Class
@@ -379,10 +389,10 @@ Public Class GameScenePanel
     Private Const DockMargin As Integer = 10
 
     ' ---- end-screen tuning ----
-    Private Const DefeatFadeMs As Double = 1800.0      ' how long the screen takes to darken
-    Private Const VictoryFadeMs As Double = 1200.0     ' how long the screen takes to brighten
-    Private Const DefeatMaxDark As Double = 0.84       ' 1.0 = fully black
-    Private Const VictoryMaxBright As Double = 0.66    ' 1.0 = fully white
+    Private Const DefeatFadeMs As Double = 1800.0      ' how long the screen takes to go black
+    Private Const VictoryFadeMs As Double = 1200.0     ' how long the screen takes to go bright
+    Private Const DefeatMaxDark As Double = 1.0        ' 1.0 = completely black (nothing shows through)
+    Private Const VictoryMaxBright As Double = 1.0     ' 1.0 = completely bright (nothing shows through)
     Private Const EndButtonsAppearAt As Double = 0.6   ' fraction of the fade at which the buttons appear
 
     Private Enum EndKind
@@ -418,10 +428,6 @@ Public Class GameScenePanel
     Private ReadOnly _hudFont As New Font("Segoe UI", 14.0F, FontStyle.Bold)
     Private ReadOnly _hudSmallFont As New Font("Segoe UI", 10.5F, FontStyle.Bold)
     Private ReadOnly _hudButtonFont As New Font("Segoe UI", 10.0F, FontStyle.Bold)
-    Private ReadOnly _bannerFont As New Font("Segoe UI", 40.0F, FontStyle.Bold)
-    Private ReadOnly _bannerSubFont As New Font("Segoe UI", 16.0F, FontStyle.Bold)
-    Private ReadOnly _movesFont As New Font("Segoe UI", 18.0F, FontStyle.Bold)
-    Private ReadOnly _endButtonFont As New Font("Segoe UI", 12.0F, FontStyle.Bold)
     Private ReadOnly _leftFormat As New StringFormat()
     Private ReadOnly _centerFormat As New StringFormat() With {.Alignment = StringAlignment.Center}
 
@@ -433,6 +439,16 @@ Public Class GameScenePanel
     Private ReadOnly _endButtons As New List(Of PixelButtonDef)
     Private _endHover As PixelButtonDef = Nothing
     Private _endPressed As PixelButtonDef = Nothing
+
+    ' The end-screen fonts and layout scale with the window, so they fill a big screen and still fit a small one.
+    Private _endScale As Double = 1.0
+    Private _endTitleFont As Font = Nothing
+    Private _endSubFont As Font = Nothing
+    Private _endMovesFont As Font = Nothing
+    Private _endButtonFont As Font = Nothing
+    Private _endTitleRect As RectangleF
+    Private _endSubRect As RectangleF
+    Private _endMovesRect As RectangleF
 
     Public Property HudMoves As Integer = 0
     Public Property HudStatus As String = ""
@@ -539,7 +555,7 @@ Public Class GameScenePanel
     End Sub
 
     ''' <summary>
-    ''' Starts the defeat (darkening) or victory (brightening) screen after delayMs. From this call on,
+    ''' Starts the defeat (fade to black) or victory (fade to bright) screen after delayMs. From this call on,
     ''' the HUD buttons and the characters are blocked; only the two end-screen buttons work.
     ''' </summary>
     Public Sub ShowEndScreen(isVictory As Boolean, title As String, subtitle As String, delayMs As Integer)
@@ -553,7 +569,7 @@ Public Class GameScenePanel
         _endButtons.Add(New PixelButtonDef("menu", If(isVictory, "GAME MENU", "MAIN MENU"), Color.FromArgb(66, 133, 200)))
         _endHover = Nothing
         _endPressed = Nothing
-        LayoutEndButtons()
+        LayoutEndScreen()
     End Sub
 
     Private Sub ClearEndScreen()
@@ -586,7 +602,7 @@ Public Class GameScenePanel
     End Sub
 
     ' ==================================================
-    ' END-SCREEN STATE
+    ' END-SCREEN STATE AND LAYOUT
     ' ==================================================
     Private ReadOnly Property IsEndActive As Boolean
         Get
@@ -606,19 +622,56 @@ Public Class GameScenePanel
         Return _endKind <> EndKind.None AndAlso EndProgress() >= EndButtonsAppearAt
     End Function
 
-    Private Function EndTitleY() As Single
-        Return Math.Max(110.0F, Me.ClientSize.Height * 0.15F)
-    End Function
+    ' Re-creates the four end-screen fonts when the window size has changed enough to matter.
+    Private Sub EnsureEndFonts(scale As Double)
+        If _endTitleFont IsNot Nothing AndAlso Math.Abs(scale - _endScale) < 0.03 Then Return
+        _endScale = scale
 
-    Private Sub LayoutEndButtons()
-        If _endButtons.Count < 2 Then Return
-        Dim bw As Integer = 190
-        Dim bh As Integer = 52
-        Dim gap As Integer = 24
-        Dim x As Integer = (Me.ClientSize.Width - (bw * 2 + gap)) \ 2
-        Dim y As Integer = CInt(EndTitleY()) + 156
-        _endButtons(0).Rect = New Rectangle(x, y, bw, bh)
-        _endButtons(1).Rect = New Rectangle(x + bw + gap, y, bw, bh)
+        If _endTitleFont IsNot Nothing Then _endTitleFont.Dispose()
+        If _endSubFont IsNot Nothing Then _endSubFont.Dispose()
+        If _endMovesFont IsNot Nothing Then _endMovesFont.Dispose()
+        If _endButtonFont IsNot Nothing Then _endButtonFont.Dispose()
+
+        _endTitleFont = New Font("Segoe UI", CSng(64.0 * scale), FontStyle.Bold)
+        _endSubFont = New Font("Segoe UI", CSng(24.0 * scale), FontStyle.Bold)
+        _endMovesFont = New Font("Segoe UI", CSng(28.0 * scale), FontStyle.Bold)
+        _endButtonFont = New Font("Segoe UI", CSng(18.0 * scale), FontStyle.Bold)
+    End Sub
+
+    ' Lays the whole block out as one group (title, subtitle, moves, buttons) centred in the window.
+    Private Sub LayoutEndScreen()
+        Dim w As Integer = Me.ClientSize.Width
+        Dim h As Integer = Me.ClientSize.Height
+        If w <= 0 OrElse h <= 0 Then Return
+
+        EnsureEndFonts(Math.Max(0.6, Math.Min(1.6, Math.Min(w / 1100.0, h / 760.0))))
+        Dim s As Single = CSng(_endScale)
+
+        Dim titleH As Single = 120.0F * s
+        Dim subH As Single = 48.0F * s
+        Dim movesH As Single = 56.0F * s
+        Dim gapA As Single = 4.0F * s
+        Dim gapB As Single = 6.0F * s
+        Dim gapC As Single = 44.0F * s
+        Dim btnW As Integer = CInt(300.0F * s)
+        Dim btnH As Integer = CInt(84.0F * s)
+        Dim btnGap As Integer = CInt(40.0F * s)
+
+        Dim total As Single = titleH + gapA + subH + gapB + movesH + gapC + btnH
+        Dim top As Single = Math.Max(8.0F, (h - total) / 2.0F)
+
+        _endTitleRect = New RectangleF(0, top, w, titleH)
+        top += titleH + gapA
+        _endSubRect = New RectangleF(0, top, w, subH)
+        top += subH + gapB
+        _endMovesRect = New RectangleF(0, top, w, movesH)
+        top += movesH + gapC
+
+        If _endButtons.Count >= 2 Then
+            Dim x As Integer = (w - (btnW * 2 + btnGap)) \ 2
+            _endButtons(0).Rect = New Rectangle(x, CInt(top), btnW, btnH)
+            _endButtons(1).Rect = New Rectangle(x + btnW + btnGap, CInt(top), btnW, btnH)
+        End If
     End Sub
 
     ' ==================================================
@@ -669,7 +722,7 @@ Public Class GameScenePanel
         MyBase.OnResize(e)
         _backdrop.Layout(Me.ClientSize.Width, Me.ClientSize.Height)
         LayoutHud()
-        LayoutEndButtons()
+        If IsEndActive Then LayoutEndScreen()
         Me.Invalidate()
     End Sub
 
@@ -945,7 +998,7 @@ Public Class GameScenePanel
         Next
 
         DrawHud(g)
-        DrawEndScreen(g)     ' on top of everything: darkens/brightens the scene, then title + buttons
+        DrawEndScreen(g)     ' on top of everything: covers the whole scene, then title + buttons
         MyBase.OnPaint(e)
     End Sub
 
@@ -1000,48 +1053,74 @@ Public Class GameScenePanel
         Next
     End Sub
 
-    ' Defeat: the whole scene (including the HUD) fades to dark. Victory: it fades to a bright wash
-    ' with a warm glow behind the title. The title, the moves and the two buttons are drawn on top.
+    ' Defeat: the whole scene fades to solid black. Victory: it fades to a solid bright cream with a
+    ' warm glow behind the text. Both end fully opaque, so nothing of the game shows through.
+    ' The title, subtitle, moves and the two buttons are drawn on top, centred as one block.
     Private Sub DrawEndScreen(g As Graphics)
         If _endKind = EndKind.None Then Return
         Dim p As Double = EndProgress()
         If p <= 0.0 Then Return
+        If _endTitleFont Is Nothing Then LayoutEndScreen()
+        If _endTitleFont Is Nothing Then Return
 
         Dim w As Integer = Me.ClientSize.Width
         Dim h As Integer = Me.ClientSize.Height
         Dim isVictory As Boolean = (_endKind = EndKind.Victory)
-        Dim titleY As Single = EndTitleY()
-        Dim cx As Single = w / 2.0F
+        Dim s As Single = CSng(_endScale)
 
         If isVictory Then
-            Using washBrush As New SolidBrush(Color.FromArgb(CInt(255 * VictoryMaxBright * p), 255, 249, 224))
+            Dim washAlpha As Integer = Math.Min(255, CInt(255.0 * VictoryMaxBright * p))
+            Using washBrush As New SolidBrush(Color.FromArgb(washAlpha, 255, 250, 228))
                 g.FillRectangle(washBrush, 0, 0, w, h)
             End Using
 
-            Dim glowW As Single = Math.Min(w * 0.9F, 900.0F)
-            Dim glowH As Single = 300.0F
+            Dim blockTop As Single = _endTitleRect.Top
+            Dim blockBottom As Single = _endMovesRect.Bottom
+            Dim glowW As Single = Math.Min(w * 0.95F, 1100.0F * s)
+            Dim glowH As Single = (blockBottom - blockTop) + 220.0F * s
+            Dim glowCenterY As Single = (blockTop + blockBottom) / 2.0F
             Using glowPath As New GraphicsPath()
-                glowPath.AddEllipse(New RectangleF(cx - glowW / 2.0F, titleY + 70.0F - glowH / 2.0F, glowW, glowH))
+                glowPath.AddEllipse(New RectangleF(w / 2.0F - glowW / 2.0F, glowCenterY - glowH / 2.0F, glowW, glowH))
                 Using glowBrush As New PathGradientBrush(glowPath)
-                    glowBrush.CenterColor = Color.FromArgb(CInt(235 * p), 255, 244, 190)
-                    glowBrush.SurroundColors = New Color() {Color.FromArgb(0, 255, 244, 190)}
+                    glowBrush.CenterColor = Color.FromArgb(CInt(210.0 * p), 255, 226, 120)
+                    glowBrush.SurroundColors = New Color() {Color.FromArgb(0, 255, 226, 120)}
                     g.FillPath(glowBrush, glowPath)
                 End Using
             End Using
         Else
-            Using darkBrush As New SolidBrush(Color.FromArgb(CInt(255 * DefeatMaxDark * p), 6, 8, 18))
+            Dim darkAlpha As Integer = Math.Min(255, CInt(255.0 * DefeatMaxDark * p))
+            Using darkBrush As New SolidBrush(Color.FromArgb(darkAlpha, 0, 0, 0))
                 g.FillRectangle(darkBrush, 0, 0, w, h)
             End Using
         End If
 
-        Dim textAlpha As Integer = CInt(255 * Math.Min(1.0, p * 2.5))
-        Dim titleFill As Color = If(isVictory, Color.FromArgb(textAlpha, 255, 200, 40), Color.FromArgb(textAlpha, 235, 70, 60))
-        Dim outline As Color = If(isVictory, Color.FromArgb(textAlpha, 70, 45, 10), Color.FromArgb(textAlpha, 20, 10, 12))
-        Dim white As Color = Color.FromArgb(textAlpha, 255, 255, 255)
+        ' Text colours differ: white text would vanish on the bright victory background.
+        Dim textAlpha As Integer = CInt(255.0 * Math.Min(1.0, p * 2.5))
+        Dim titleFill As Color
+        Dim titleOutline As Color
+        Dim subFill As Color
+        Dim subOutline As Color
+        Dim movesFill As Color
+        Dim movesOutline As Color
+        If isVictory Then
+            titleFill = Color.FromArgb(textAlpha, 255, 196, 40)
+            titleOutline = Color.FromArgb(textAlpha, 105, 62, 8)
+            subFill = Color.FromArgb(textAlpha, 28, 92, 56)
+            subOutline = Color.FromArgb(textAlpha, 255, 250, 228)
+            movesFill = Color.FromArgb(textAlpha, 35, 105, 165)
+            movesOutline = Color.FromArgb(textAlpha, 255, 250, 228)
+        Else
+            titleFill = Color.FromArgb(textAlpha, 235, 70, 60)
+            titleOutline = Color.FromArgb(textAlpha, 70, 8, 8)
+            subFill = Color.FromArgb(textAlpha, 255, 255, 255)
+            subOutline = Color.FromArgb(textAlpha, 0, 0, 0)
+            movesFill = Color.FromArgb(textAlpha, 255, 226, 130)
+            movesOutline = Color.FromArgb(textAlpha, 0, 0, 0)
+        End If
 
-        DrawOutlinedText(g, _endTitle, _bannerFont, titleFill, outline, New RectangleF(0, titleY, w, 64), _centerFormat, 3)
-        DrawOutlinedText(g, _endSub, _bannerSubFont, white, outline, New RectangleF(0, titleY + 68, w, 30), _centerFormat, 2)
-        DrawOutlinedText(g, "Moves: " & HudMoves, _movesFont, white, outline, New RectangleF(0, titleY + 104, w, 34), _centerFormat, 2)
+        DrawOutlinedText(g, _endTitle, _endTitleFont, titleFill, titleOutline, _endTitleRect, _centerFormat, Math.Max(2.0F, 4.0F * s))
+        DrawOutlinedText(g, _endSub, _endSubFont, subFill, subOutline, _endSubRect, _centerFormat, Math.Max(1.0F, 2.0F * s))
+        DrawOutlinedText(g, "Moves: " & HudMoves, _endMovesFont, movesFill, movesOutline, _endMovesRect, _centerFormat, Math.Max(1.0F, 2.0F * s))
 
         If EndButtonsVisible() Then
             For Each btn In _endButtons
@@ -1062,10 +1141,10 @@ Public Class GameScenePanel
             _hudFont.Dispose()
             _hudSmallFont.Dispose()
             _hudButtonFont.Dispose()
-            _bannerFont.Dispose()
-            _bannerSubFont.Dispose()
-            _movesFont.Dispose()
-            _endButtonFont.Dispose()
+            If _endTitleFont IsNot Nothing Then _endTitleFont.Dispose()
+            If _endSubFont IsNot Nothing Then _endSubFont.Dispose()
+            If _endMovesFont IsNot Nothing Then _endMovesFont.Dispose()
+            If _endButtonFont IsNot Nothing Then _endButtonFont.Dispose()
             _leftFormat.Dispose()
             _centerFormat.Dispose()
         End If

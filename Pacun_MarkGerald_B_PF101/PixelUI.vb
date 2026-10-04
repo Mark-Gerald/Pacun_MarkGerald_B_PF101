@@ -85,6 +85,7 @@ End Module
 ''' The shared map background: land on both sides and a river down the middle, all filling the
 ''' whole panel (no sky, no stripes). To change the look later, change the two tile paths below.
 ''' </summary>
+
 Public Class RiverBackdrop
     Implements IDisposable
 
@@ -100,15 +101,19 @@ Public Class RiverBackdrop
 
     Private ReadOnly _bankTile As Image
     Private ReadOnly _waterTile As Image
+    Private ReadOnly _scenery As RiverCrossingScenery      ' Nothing when scenery is turned off
+    Private _bankClip As Region = Nothing                   ' both banks, so animated scenery never draws over the water
     Private _bankCache As Bitmap = Nothing
     Private _cacheDirty As Boolean = True
     Private _waveOffset As Double = 0
     Private _width As Integer = 0
     Private _height As Integer = 0
 
-    Public Sub New()
+    ''' <param name="withScenery">True = trees, flowers, animals, etc. on the land. Pass False for the plain land.</param>
+    Public Sub New(Optional withScenery As Boolean = True)
         _bankTile = GameAssets.GetSheet(BankTilePath)
         _waterTile = GameAssets.GetSheet(WaterTilePath)
+        If withScenery Then _scenery = New RiverCrossingScenery()
     End Sub
 
     Public Sub Layout(w As Integer, h As Integer)
@@ -123,11 +128,18 @@ Public Class RiverBackdrop
         River = New Rectangle(riverLeft, 0, riverW, h)
         LeftBank = New Rectangle(0, 0, riverLeft, h)
         RightBank = New Rectangle(riverLeft + riverW, 0, Math.Max(1, w - (riverLeft + riverW)), h)
+
+        If _bankClip IsNot Nothing Then _bankClip.Dispose()
+        _bankClip = New Region(LeftBank)
+        _bankClip.Union(RightBank)
+
+        If _scenery IsNot Nothing Then _scenery.Layout(w, h, LeftBank, River, RightBank)
         _cacheDirty = True
     End Sub
 
     Public Sub Advance(dt As Double)
         _waveOffset = (_waveOffset + 40.0 * dt) Mod 800.0
+        If _scenery IsNot Nothing Then _scenery.Advance(dt)
     End Sub
 
     Public Sub Draw(g As Graphics)
@@ -138,6 +150,7 @@ Public Class RiverBackdrop
         If _cacheDirty OrElse _bankCache Is Nothing Then RebuildCache()
         g.DrawImage(_bankCache, 0, 0, _bankCache.Width, _bankCache.Height)
 
+        ' ---- water: unchanged ----
         If _waterTile IsNot Nothing Then
             TileScrollingVertical(g, _waterTile, River, _waveOffset)
         Else
@@ -152,6 +165,14 @@ Public Class RiverBackdrop
                     y += 28
                 End While
             End Using
+        End If
+
+        ' ---- animated scenery: rabbits, birds, butterflies, falling leaves (land only) ----
+        If _scenery IsNot Nothing AndAlso _bankClip IsNot Nothing Then
+            g.SetClip(_bankClip, CombineMode.Replace)
+            _scenery.DrawAnimals(g)
+            _scenery.DrawLeaves(g)
+            g.ResetClip()
         End If
 
         ' Soft shoreline so land and water read as one continuous map.
@@ -176,6 +197,9 @@ Public Class RiverBackdrop
                     g.FillRectangle(bankBrush, RightBank)
                 End Using
             End If
+
+            ' Static scenery (ground patches, grass, flowers, stones, reeds, bushes, trees) is painted once here.
+            If _scenery IsNot Nothing Then _scenery.DrawStatic(g)
         End Using
         _cacheDirty = False
     End Sub
@@ -215,6 +239,11 @@ Public Class RiverBackdrop
             _bankCache.Dispose()
             _bankCache = Nothing
         End If
+        If _bankClip IsNot Nothing Then
+            _bankClip.Dispose()
+            _bankClip = Nothing
+        End If
+        If _scenery IsNot Nothing Then _scenery.Dispose()
     End Sub
 
 End Class
